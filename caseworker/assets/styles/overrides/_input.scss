@@ -9,6 +9,10 @@
 	}
 }
 
+.lite-search-bar {
+	@extend .lite-filter-bar;
+  }
+
 .govuk-input::placeholder {
 	color: $govuk-secondary-text-colour;
 }
