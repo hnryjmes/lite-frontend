@@ -902,4 +902,5 @@ def divide(value, other):
 
 @register.filter
 def full_name(user):
-    return f"{user['first_name']} {user['last_name']}"
+    user = user or {}
+    return f"{user.get('first_name', '')} {user.get('last_name', '')}"

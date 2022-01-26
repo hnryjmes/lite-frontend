@@ -315,6 +315,15 @@ def choose_location_type(driver, choice):  # noqa
     functions.click_submit(driver)
 
 
+@when(parsers.parse('I select "{choice}" and click submit'))
+@when(parsers.parse('I select "{choice}" for where my goods will begin their export journey'))
+@when(parsers.parse('I select "{choice}" when asked if the products are being permanently exported'))
+@when(parsers.parse('I select "{choice}" when asked who the products are going to'))
+def choose_who_products_going_to(driver, choice):  # noqa
+    driver.find_element_by_xpath(f"//label/span[contains(text(), '{choice}')]").click()
+    functions.click_submit(driver)
+
+
 @when(parsers.parse('I select the site at position "{no}"'))  # noqa
 def select_the_site_at_position(driver, no):  # noqa
     sites = SitesPage(driver)
@@ -691,11 +700,14 @@ def final_advice(context, decision, api_test_client):  # noqa
 @given("I remove the flags to finalise the licence")  # noqa
 def i_remove_all_flags(context, api_test_client):  # noqa
     api_test_client.flags.assign_case_flags(context.case_id, [])
+    api_test_client.gov_users.put_test_user_in_team("Licensing Unit")
+    api_test_client.flags.assign_destination_flags(context.third_party["id"], [])
+    api_test_client.gov_users.put_test_user_in_team("Admin")
 
 
 @given("I put the test user in the admin team")
 def put_test_user_in_admin_team(api_test_client):  # noqa
-    api_test_client.gov_users.put_test_user_in_admin_team()
+    api_test_client.gov_users.put_test_user_in_team("Admin")
 
 
 @given(parsers.parse('I create a licence for my application with "{decision}" decision document'))  # noqa
@@ -819,13 +831,6 @@ def select_product_type(driver, product_type):  # noqa
 def specify_serial_number_of_other_identification_details(driver, has_markings, details):  # noqa
     good_details_page = AddGoodDetails(driver)
     good_details_page.set_identification_details(has_markings, details)
-    functions.click_submit(driver)
-
-
-@when(parsers.parse('I select sporting shotgun status as "{status}"'))
-def select_sporting_gun_status(driver, status):  # noqa
-    good_details_page = AddGoodDetails(driver)
-    good_details_page.select_sporting_gun_status(status)
     functions.click_submit(driver)
 
 
@@ -965,7 +970,6 @@ def summary_screen_for_product_type(driver, product_type_value, name, proceed): 
 
     if product_type_value == "Firearms":
         expected_fields += [
-            "Sporting shotgun",
             "Year of manufacture",
             "Replica firearm",
             "Calibre",

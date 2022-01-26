@@ -50,8 +50,8 @@ make run_exporter
 #### First time setup
 
   - Set up your local config file:
-    - `cp example.exporter.env caseworker.env` - you will want to set this up with valid values, ask another developer or get them from Vault.
-    - `cp example.caseworker.env exporter.env` - you will want to set this up with valid values, ask another developer or get them from Vault.
+    - `make secrets`
+    - populate the newly created `caseworker.env` and `exporter.env` with values from Vault.
 
   * Ensure docker is running
 
@@ -59,9 +59,11 @@ make run_exporter
     - If you haven't already done this for lite-api, set up a shared docker network:
       - `docker network create lite` - shared network to allow API and frontend to communicate
     - `docker-compose build` - build the container image
+  * Installation requirements
+    - install libmagic
 
 #### Starting the service
-- `docker-compose up` - to start the two frontend Django servers
+- `docker-compose up -d` - to start the two frontend Django servers
 
 - Ensure you have a working version of `lite-api` running, see [the instructions for running it
   in docker](https://github.com/uktrade/lite-api/blob/master/README.md#running-the-service-with-docker)
@@ -75,7 +77,10 @@ make run_exporter
 To run unit tests:
 
 ```
-make run_unit_tests
+make run_unit_tests_caseworker
+make run_unit_tests_exporter
+make run_unit_tests_core
+make run_all_unit_tests
 ```
 
 ## Helpful links
@@ -99,7 +104,15 @@ We use pytest + Selenium for end-to-end tests.
 
 Run all tests
 
-    PIPENV_DOTENV_LOCATION=exporter.env ENVIRONMENT=local pipenv run pytest ui_tests/
+```
+PIPENV_DOTENV_LOCATION=exporter.env ENVIRONMENT=local pipenv run pytest ui_tests/
+make run_ui_tests
+```
+Run all Unit and UI tests 
+```
+make run_all_tests
+```
+
 
 > You can use the flags `--step-through` (in conjunction with `-s`) and `--step-verbose` to stop on each step. Helpful for exploration and debugging.
 

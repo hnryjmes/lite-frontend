@@ -257,9 +257,7 @@ Feature: I want to indicate the standard licence I want
     When I create a standard application of a "permanent" export type
     When I click on the "goods" section
     And I choose to add a new product
-    And I select product category "firearms"
     And I select product type "firearm"
-    And I select sporting shotgun status as "Yes"
     And I specify number of items as "4"
     And I select "Yes" for serial number or other identification markings with details as " "
     And I enter "4" serial numbers as "serial1,serial2,serial3,serial4"
@@ -286,9 +284,7 @@ Feature: I want to indicate the standard licence I want
     When I create a standard application of a "permanent" export type
     When I click on the "goods" section
     And I choose to add a new product
-    And I select product category "firearms"
     And I select product type "component_for_ammunition"
-    And I select sporting shotgun status as "Yes"
     And I specify number of items as "3"
     And I select "Yes" for serial number or other identification markings with details as " "
     And I enter "3" serial numbers as "serial1,serial2,serial3"
@@ -313,7 +309,6 @@ Feature: I want to indicate the standard licence I want
     When I create a standard application of a "permanent" export type
     When I click on the "goods" section
     And I choose to add a new product
-    And I select product category "firearms"
     And I select product type "firearm_accessory"
     And I enter good name as "firearm accessory" description as "firearm accessory" part number "FR-123-ACC" controlled "True" control code "ML1a" and graded "no"
     And I specify military use details as "yes_designed"
@@ -333,7 +328,6 @@ Feature: I want to indicate the standard licence I want
     When I create a standard application of a "permanent" export type
     When I click on the "goods" section
     And I choose to add a new product
-    And I select product category "firearms"
     And I select product type "software_for_firearm"
     And I enter good name as "Firearms software" description as "Test software for firearms" part number "FR-123-ACC" controlled "True" control code "ML1a" and graded "no"
     And I specify the "software" product purpose as "For product diagnostics"
@@ -351,9 +345,7 @@ Feature: I want to indicate the standard licence I want
     When I create a standard application of a "permanent" export type
     When I click on the "goods" section
     And I choose to add a new product
-    And I select product category "firearms"
     And I select product type "firearm"
-    And I select sporting shotgun status as "No"
     And I specify number of items as "3"
     And I select "Yes" for serial number or other identification markings with details as "serial number FR8654-Z"
     And I enter "3" serial numbers as "serial1,serial2,serial3"

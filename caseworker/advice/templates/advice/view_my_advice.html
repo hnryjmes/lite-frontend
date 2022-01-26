@@ -1,41 +1,52 @@
 {% extends 'layouts/case.html' %}
 {% load crispy_forms_tags %}
 
+{% block header_tabs %}
+	{% include "advice/case-tabs.html" with case=case queue=queue %}
+{% endblock %}
+
 {% block body %}
 <div class="govuk-width-container">
-    <a href="#" class="govuk-back-link">Back</a>
     <main class="govuk-main-wrapper">
+        {% for error in form.non_field_errors %}
+        <div class="govuk-error-summary" aria-labelledby="error-summary-title" role="alert" tabindex="-1" data-module="govuk-error-summary">
+          <h2 class="govuk-error-summary__title" id="error-summary-title">
+            There is a problem
+          </h2>
+          <div class="govuk-error-summary__body">
+            <ul class="govuk-list govuk-error-summary__list">
+              <li>
+                {{ error }}
+              </li>
+            </ul>
+          </div>
+        </div>
+        {% endfor %}
         <div class="govuk-grid-row">
+          <br>
             <div class="govuk-grid-column-three-quarters">
-              <h1 class="govuk-heading-xl">View Advice</h1>
-              {% if my_advice|length %}
-                <a role="button" draggable="false" class="govuk-button govuk-button--secondary" href="{% url 'cases:edit_advice' queue_pk case.id %}">
-                    Edit recommendation
-                </a>
-                <a role="button" draggable="false" class="govuk-button govuk-button--secondary" href="{% url 'cases:delete_advice' queue_pk case.id %}">
-                    Clear recommendation
-                </a>
-                {% with advice=my_advice.0 %}
-
-                  {% if advice.type.key in 'approve,proviso' %}
-                    {% include "advice/approve-advice-details.html" %}
-                  {% elif advice.type.key == "refuse" %}
-                    {% include "advice/refuse-advice-details.html" %}
+              <h1 class="govuk-heading-xl">View recommendation</h1>
+              {% if my_advice %}
+                  {% if buttons.edit_recommendation %}
+                    <a role="button" draggable="false" class="govuk-button govuk-button--secondary" href="{% url 'cases:edit_advice' queue_pk case.id %}">
+                        Edit recommendation
+                    </a>
                   {% endif %}
-
-                {% endwith %}
+                  {% if buttons.clear_recommendation %}
+                    <a role="button" draggable="false" class="govuk-button govuk-button--secondary" href="{% url 'cases:delete_advice' queue_pk case.id %}">
+                        Clear recommendation
+                    </a>
+                  {% endif %}
+                {% for advice in my_advice %}
+                  {% include "advice/advice_details.html" %}
+                {% endfor %}
               {% else %}
                 <label class="govuk-label">No Advice is given for this case yet</label>
               {% endif %}
             </div>
             <div class="govuk-grid-column-one-quarter">
-              {% if my_advice|length %}
-                <a role="button" draggable="false" class="govuk-button" href="#move-forward">
-                    Move case forward
-                    <svg class="govuk-button__start-icon" xmlns="http://www.w3.org/2000/svg" width="13" height="15" viewBox="0 0 33 43" aria-hidden="true" focusable="false">
-                      <path fill="currentColor" d="M0 0h13l20 20-20 20H0l20-20z" />
-                    </svg>
-                </a>
+              {% if my_advice and advice_completed and buttons.move_case_forward %}
+                {% crispy form %}
               {% endif %}
             </div>
         </div>
