@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
 
+from core.constants import CaseStatusEnum
 from ui_tests.caseworker.pages.advice import FinalAdvicePage, TeamAdvicePage
 from ui_tests.caseworker.pages.case_page import CasePage, CaseTabs
 from ui_tests.caseworker.pages.goods_queries_pages import StandardGoodsReviewPages, OpenGoodsReviewPages
@@ -31,7 +32,6 @@ from ui_tests.caseworker.fixtures.add_a_picklist import (  # noqa
     add_a_standard_advice_picklist,
     add_a_report_summary_picklist,
 )
-from ui_tests.caseworker.pages.advice import UserAdvicePage
 from ui_tests.caseworker.pages.generate_decision_documents_page import GeneratedDecisionDocuments
 from ui_tests.caseworker.pages.generate_document_page import GeneratedDocument
 from ui_tests.caseworker.pages.give_advice_pages import GiveAdvicePages
@@ -151,13 +151,60 @@ def create_open_app(driver, apply_for_open_application):  # noqa
     pass
 
 
+@given("I prepare the application for final review")
+def prepare_for_final_review(driver, api_test_client):  # noqa
+    api_test_client.gov_users.put_test_user_in_team("Admin")
+    api_test_client.flags.assign_case_flags(api_test_client.context["case_id"], [])
+    api_test_client.gov_users.put_test_user_in_team("Licensing Unit")
+    api_test_client.flags.assign_destination_flags(
+        [
+            api_test_client.context["end_user"]["id"],
+            api_test_client.context["ultimate_end_user"]["id"],
+            api_test_client.context["consignee"]["id"],
+            api_test_client.context["third_party"]["id"],
+        ],
+        [],
+    )
+    api_test_client.goods.update_good_clc(
+        good_id=api_test_client.context["good_id"],
+        good_on_application_id=api_test_client.context["good_on_application_id"],
+        case_id=api_test_client.context["case_id"],
+        control_list_entries=["ML1a"],
+        is_good_controlled=True,
+        report_summary="ARS",
+    )
+    api_test_client.cases.manage_case_status(
+        api_test_client.context["case_id"], status=CaseStatusEnum.UNDER_FINAL_REVIEW
+    )
+
+
+@when("I click save and continue")
+@when("I click save")
+@when("I click preview")
+@when("I click confirm")
 @when("I click continue")
 @when("I click submit")
-def i_click_continue(driver):  # noqa
+def submit_form(driver):  # noqa
     Shared(driver).click_submit()
     # handle case when scenario clicks submit in consecutive steps: there is a race condition resulting in the same
     # submit button being clicked for each step
-    time.sleep(5)
+    time.sleep(2)
+
+
+@when(parsers.parse('I click "{button_text}"'))
+def click_button_with_text(driver, button_text):  # noqa
+    driver.find_element(
+        by=By.XPATH,
+        value=(
+            f"//button[contains(@class, 'govuk-button') and contains(text(), '{button_text}')] "
+            f"| //a[contains(@class, 'govuk-button') and contains(text(), '{button_text}')]"
+        ),
+    ).click()
+
+
+@when("I click back")
+def click_back_link(driver):  # noqa
+    driver.find_element_by_link_text("Back").click()
 
 
 @when("I click change status")  # noqa
@@ -201,7 +248,7 @@ def add_report_summary_picklist(add_a_report_summary_picklist):  # noqa
 
 
 @then("I see previously created application")  # noqa
-def see_queue_in_queue_list(driver, context):  # noqa
+def should_see_previously_created_application(driver, context):  # noqa
     case_page = CaseListPage(driver)
     functions.try_open_filters(driver)
     case_page.click_clear_filters_button()
@@ -270,6 +317,17 @@ def get_my_case_list(driver):  # noqa
     driver.find_element_by_link_text("Cases").click()
 
 
+@when("I click the application previously created")
+def i_click_application_previously_created(driver, context):  # noqa
+    case_list_page = CaseListPage(driver)
+    functions.try_open_filters(driver)
+    case_list_page.click_clear_filters_button()
+    functions.try_open_filters(driver)
+    case_list_page.filter_by_case_reference(context.reference_code)
+    functions.click_apply_filters(driver)
+    case_list_page.click_on_case(context.case_id)
+
+
 @when(parsers.parse('I switch to queue "{queue}"'))  # noqa
 def switch_queue_dropdown(driver, queue):  # noqa
     driver.find_element_by_id("link-queue").click()
@@ -290,6 +348,18 @@ def case_in_cases_list(driver, context):  # noqa
     assert context.reference_code in context.case_row.text
 
 
+@then("I should see there are no new cases")
+def no_new_cases(driver, context):  # noqa
+    case_page = CaseListPage(driver)
+    functions.try_open_filters(driver)
+    case_page.click_clear_filters_button()
+    case_page = CaseListPage(driver)
+    functions.try_open_filters(driver)
+    case_page.filter_by_case_reference(context.reference_code)
+    functions.click_apply_filters(driver)
+    assert "There are no new cases" in driver.find_element_by_id("form-cases").text
+
+
 @then("I should see my case SLA")  # noqa
 def case_sla(driver, context):  # noqa
     assert CaseListPage(driver).get_case_row_sla(context.case_row) == "0"
@@ -298,6 +368,11 @@ def case_sla(driver, context):  # noqa
 @then("I see the case page")  # noqa
 def i_see_the_case_page(driver, context):  # noqa
     assert context.reference_code in driver.find_element_by_id(ApplicationPage.HEADING_ID).text
+
+
+@then(parsers.parse('I see the case status is now "{status}"'))
+def should_see_case_status(driver, status):  # noqa
+    assert CasePage(driver).get_status() == status
 
 
 @when("I go to users")  # noqa
@@ -325,6 +400,11 @@ def finalise(driver):  # noqa
 def selected_created_template(driver, context):  # noqa
     GeneratedDocument(driver).click_letter_template(context.document_template_id)
     Shared(driver).click_submit()
+
+
+@when(parsers.parse('I select the template "{template_name}"'))  # noqa
+def select_template_by_name(driver, template_name):  # noqa
+    GeneratedDocument(driver).select_document_template_by_name(template_name)
 
 
 @when("I go to the documents tab")  # noqa
@@ -386,16 +466,6 @@ def approve_application_objects(context, api_test_client, decision):  # noqa
 
     api_test_client.cases.create_user_advice(context.case_id, data)
     api_test_client.cases.create_team_advice(context.case_id, data)
-
-
-@when("I go to the final advice page by url")  # noqa
-def final_advice_page(driver, context, internal_url):  # noqa
-    driver.get(
-        internal_url.rstrip("/")
-        + "/queues/00000000-0000-0000-0000-000000000001/cases/"
-        + context.case_id
-        + "/final-advice/"
-    )
 
 
 @when("I click edit flags link")  # noqa
@@ -470,20 +540,11 @@ def i_create_an_standard_advice_picklist(context, add_a_standard_advice_picklist
     context.standard_advice_query_picklist_question_text = add_a_standard_advice_picklist["text"]
 
 
-@when("I click on the user advice tab")  # noqa
-def i_click_on_view_advice(driver, context):  # noqa
-    CasePage(driver).change_tab(CaseTabs.USER_ADVICE)
-
-
-@when("I select all items in the user advice view")  # noqa
-def click_items_in_advice_view(driver, context):  # noqa
-    context.number_of_advice_items_clicked = UserAdvicePage(driver).click_on_all_checkboxes()
-
-
-@when(parsers.parse("I choose to '{option}' the licence"))  # noqa
-def choose_advice_option(driver, option, context):  # noqa
-    GiveAdvicePages(driver).click_on_advice_option(option)
-    context.advice_data = []
+@when(parsers.parse('I expand the details for "{details_text}"'))
+def expand_details(driver, details_text):  # noqa
+    driver.find_element_by_xpath(
+        f"//details[@class='govuk-details']/summary/span[contains(text(), '{details_text}')]"
+    ).click()
 
 
 @when(parsers.parse("I import text from the '{option}' picklist"))  # noqa
@@ -503,11 +564,6 @@ def write_note_text_field(driver, text, context):  # noqa
 @when(parsers.parse("I select that a footnote is not required"))  # noqa
 def write_note_text_field(driver, text, context):  # noqa
     GiveAdvicePages(driver).select_footnote_not_required()
-
-
-@when("I combine all user advice")  # noqa
-def combine_all_advice(driver):  # noqa
-    UserAdvicePage(driver).click_combine_advice()
 
 
 @given("I create a letter paragraph picklist")  # noqa
@@ -565,8 +621,8 @@ def i_apply_filters(driver, context):  # noqa
     functions.click_apply_filters(driver)
 
 
-@then("I dont see previously created application")  # noqa
-def dont_see_queue_in_queue_list(driver, context):  # noqa
+@then("I don't see previously created application")
+def dont_see_previously_created_application(driver, context):  # noqa
     case_page = CaseListPage(driver)
     functions.try_open_filters(driver)
     case_page.filter_by_case_reference(context.reference_code)
@@ -678,6 +734,11 @@ def case_removed_from_queue(driver, queue):  # noqa
     driver.find_element_by_id("link-change-queues").click()
     select_queue(driver, queue, False)
     functions.click_submit(driver)
+
+
+@then(parsers.parse("I see the case is not assigned to any queues"))  # noqa
+def case_not_assigned_to_any_queue(driver, queue):  # noqa
+    assert CasePage(driver).get_assigned_queues() == "Not assigned to any queues"
 
 
 @then(parsers.parse('the flag "{flag}" is not present'))  # noqa

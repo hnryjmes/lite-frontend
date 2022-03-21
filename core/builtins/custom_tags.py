@@ -2,9 +2,10 @@ from __future__ import division
 
 import datetime
 import json
-from importlib import import_module
+import os
 import re
 from collections import Counter, OrderedDict
+from importlib import import_module
 
 import bleach
 from dateutil.parser import parse
@@ -158,7 +159,7 @@ def str_date(value):
 @stringfilter
 def str_date_only(value):
     if value != "None":
-        return localtime(parse(value)).strftime("%d %B %Y")
+        return localtime(parse(value)).strftime("%-d %B %Y")
 
 
 @register.filter
@@ -798,6 +799,11 @@ def get(value, arg):
 
 
 @register.filter()
+def getitem(obj, name):
+    return obj[name]
+
+
+@register.filter()
 def application_type_in_list(application_type, application_types):
     types = CASE_SECTIONS[application_types]
     if isinstance(types, list):
@@ -833,7 +839,9 @@ def get_parties_status_optional_documents(parties):
             if not party:
                 return NOT_STARTED
     else:
-        if not parties["document"]:
+        if not parties["documents"]:
+            if parties["type"] == "end_user" and parties["end_user_document_available"] is False:
+                return DONE
             return IN_PROGRESS
 
     return DONE
@@ -873,6 +881,19 @@ def display_clc_ratings(control_list_entries):
     return ", ".join(ratings)
 
 
+def party_status(party):
+    if not party:
+        return NOT_STARTED
+
+    if not party["documents"]:
+        if party["type"] == "end_user" and party["end_user_document_available"] is False:
+            return DONE
+
+        return IN_PROGRESS
+
+    return DONE
+
+
 @register.filter()
 def get_parties_status(parties):
     if not parties:
@@ -880,14 +901,9 @@ def get_parties_status(parties):
 
     if isinstance(parties, list):
         for party in parties:
-            if not party:
-                return NOT_STARTED
-
-            if not party["document"]:
-                return IN_PROGRESS
+            return party_status(party)
     else:
-        if not parties["document"]:
-            return IN_PROGRESS
+        return party_status(parties)
 
     return DONE
 
@@ -904,3 +920,15 @@ def divide(value, other):
 def full_name(user):
     user = user or {}
     return f"{user.get('first_name', '')} {user.get('last_name', '')}"
+
+
+@register.filter
+def verbose_goods_starting_point(value):
+    goods_starting_points = {"GB": "Great Britain", "NI": "Northern Ireland"}
+    return goods_starting_points.get(value, "")
+
+
+@register.filter
+def document_extension(filename):
+    _, ext = os.path.splitext(filename)
+    return ext[1:]

@@ -78,7 +78,12 @@ def opening_question():
         description=description,
         questions=[RadioButtons(name="licence_type", options=options)],
         default_button_name="Continue",
-        back_link=Breadcrumbs([BackLink("Account home", reverse("core:home")), BackLink("Apply for a licence", ""),]),
+        back_link=Breadcrumbs(
+            [
+                BackLink("Account home", reverse("core:home")),
+                BackLink("Apply for a licence", ""),
+            ]
+        ),
     )
 
 
@@ -88,7 +93,11 @@ def export_permanency_form(application_type):
         description="",
         questions=[
             RadioButtons(
-                name="export_type", options=[Option("temporary", "Temporary"), Option("permanent", "Permanent"),],
+                name="export_type",
+                options=[
+                    Option("temporary", "Temporary"),
+                    Option("permanent", "Permanent"),
+                ],
             ),
         ],
         default_button_name="Continue" if application_type == CaseTypes.SIEL else "Save and continue",
@@ -150,9 +159,6 @@ def export_licence_questions(request, application_type, goodstype_category=None)
     if application_type == CaseTypes.OIEL:
         forms.append(goodstype_category_form())
 
-    if application_type != CaseTypes.OGEL and goodstype_category not in ["media", "cryptographic"]:
-        forms.append(export_permanency_form(application_type))
-
     if application_type != CaseTypes.OGEL:
         forms.append(reference_name_form())
 
@@ -172,16 +178,26 @@ def goodstype_category_form(application_id=None):
             RadioButtons(
                 name="goodstype_category",
                 options=[
-                    Option(key="military", value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.MILITARY,),
                     Option(
-                        key="cryptographic", value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.CRYPTOGRAPHIC,
+                        key="military",
+                        value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.MILITARY,
                     ),
-                    Option(key="media", value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.MEDIA,),
+                    Option(
+                        key="cryptographic",
+                        value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.CRYPTOGRAPHIC,
+                    ),
+                    Option(
+                        key="media",
+                        value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.MEDIA,
+                    ),
                     Option(
                         key="uk_continental_shelf",
                         value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.UK_CONTINENTAL_SHELF,
                     ),
-                    Option(key="dealer", value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.DEALER,),
+                    Option(
+                        key="dealer",
+                        value=ExportLicenceQuestions.OpenLicenceCategoryQuestion.DEALER,
+                    ),
                 ],
             )
         ],

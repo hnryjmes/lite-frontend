@@ -162,7 +162,8 @@ def test_edit_refuse_advice_post(
 
 
 @pytest.mark.parametrize(
-    "team, advice_level", ((services.LICENSING_UNIT_TEAM, "final"), (services.MOD_ECJU_TEAM, "team")),
+    "team, advice_level",
+    ((services.LICENSING_UNIT_TEAM, "final"), (services.MOD_ECJU_TEAM, "team")),
 )
 @patch("caseworker.advice.views.get_gov_user")
 def test_edit_advice_get(
@@ -176,7 +177,7 @@ def test_edit_advice_get(
     refusal_advice,
     url,
 ):
-    mock_get_gov_user.return_value = ({"user": {"team": {"id": team}}}, None)
+    mock_get_gov_user.return_value = ({"user": {"team": {"id": "34344324-34234-432", "alias": team}}}, None)
     case_data = data_standard_case
     case_data["case"]["data"]["goods"] = standard_case_with_advice["data"]["goods"]
     # Add conflicting user advice
@@ -184,7 +185,7 @@ def test_edit_advice_get(
     # Add final advice
     for advice in standard_case_with_advice["advice"]:
         advice["level"] = advice_level
-        advice["user"]["team"]["id"] = team
+        advice["user"]["team"]["alias"] = team
     case_data["case"]["advice"] += standard_case_with_advice["advice"]
 
     response = authorized_client.get(url)

@@ -15,32 +15,34 @@ from exporter.applications.views import (
     questions,
     end_use_details,
     route_of_goods,
-    temporary_export_details,
+    export_details,
 )
 from exporter.applications.views.goods import AddGoodsSummary, GoodsDetailSummaryCheckYourAnswers
 from exporter.applications.views.parties import consignees, end_users, third_parties, ultimate_end_users
 from exporter.goods.views import (
     EditGood,
     EditGrading,
-    GoodMilitaryUse,
-    GoodComponent,
-    GoodInformationSecurity,
-    GoodSoftwareTechnology,
-    EditFirearmProductType,
-    EditCalibre,
-    EditFirearmActDetails,
-    EditNumberofItems,
-    EditIdentificationMarkings,
-    EditSerialNumbers,
-    EditYearOfManufacture,
-    EditFirearmReplica,
+    GoodComponentView,
+    GoodInformationSecurityView,
+    GoodMilitaryUseView,
+    GoodSoftwareTechnologyView,
+    EditFirearmProductTypeView,
+    EditCalibreView,
+    EditFirearmActDetailsView,
+    EditNumberOfItemsView,
+    EditIdentificationMarkingsView,
+    EditSerialNumbersView,
+    EditFirearmReplicaView,
     EditFirearmActCertificateDetails,
+    EditYearOfManufactureView,
+    UpdateSerialNumbersView,
 )
 
 app_name = "applications"
 urlpatterns = [
     # Common
     path("", common.ApplicationsList.as_view(), name="applications"),
+    path("add-serial-numbers/", goods.AddSerialNumbersList.as_view(), name="add_serial_numbers"),
     path("<uuid:pk>/delete/", common.DeleteApplication.as_view(), name="delete"),
     path("<uuid:pk>/task-list/", common.ApplicationTaskList.as_view(), name="task_list"),
     path("<uuid:pk>/summary/", common.ApplicationSummary.as_view(), name="summary"),
@@ -50,7 +52,7 @@ urlpatterns = [
     path("<uuid:pk>/submit/", common.Submit.as_view(), name="submit"),
     path("<uuid:pk>/copy/", common.ApplicationCopy.as_view(), name="copy"),
     # Standard and Open Licence
-    path("<uuid:pk>/edit/reference-name/", edit.EditReferenceName.as_view(), name="edit_reference_name",),
+    path("<uuid:pk>/edit/reference-name/", edit.EditReferenceName.as_view(), name="edit_reference_name"),
     path(
         "<uuid:pk>/edit/told-by-an-official/",
         told_by_an_official.ApplicationEditToldByAnOfficial.as_view(),
@@ -73,31 +75,35 @@ urlpatterns = [
     ),
     path(
         "<uuid:pk>/goods/<uuid:good_pk>/edit-software-technology/",
-        GoodSoftwareTechnology.as_view(),
+        GoodSoftwareTechnologyView.as_view(),
         name="good_software_technology",
     ),
-    path("<uuid:pk>/goods/<uuid:good_pk>/edit-military-use/", GoodMilitaryUse.as_view(), name="good_military_use"),
-    path("<uuid:pk>/goods/<uuid:good_pk>/edit-good-component/", GoodComponent.as_view(), name="good_component"),
+    path("<uuid:pk>/goods/<uuid:good_pk>/edit-military-use/", GoodMilitaryUseView.as_view(), name="good_military_use"),
+    path("<uuid:pk>/goods/<uuid:good_pk>/edit-good-component/", GoodComponentView.as_view(), name="good_component"),
     path(
         "<uuid:pk>/goods/<uuid:good_pk>/edit-information-security/",
-        GoodInformationSecurity.as_view(),
+        GoodInformationSecurityView.as_view(),
         name="good_information_security",
     ),
     path(
         "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/type/",
-        EditFirearmProductType.as_view(),
+        EditFirearmProductTypeView.as_view(),
         name="firearm_type",
     ),
-    path("<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/calibre/", EditCalibre.as_view(), name="calibre"),
+    path("<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/calibre/", EditCalibreView.as_view(), name="calibre"),
     path(
         "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/year-of-manufacture/",
-        EditYearOfManufacture.as_view(),
+        EditYearOfManufactureView.as_view(),
         name="year-of-manufacture",
     ),
-    path("<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/replica/", EditFirearmReplica.as_view(), name="replica",),
+    path(
+        "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/replica/",
+        EditFirearmReplicaView.as_view(),
+        name="replica",
+    ),
     path(
         "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/firearms-act/",
-        EditFirearmActDetails.as_view(),
+        EditFirearmActDetailsView.as_view(),
         name="firearms_act",
     ),
     path(
@@ -106,18 +112,18 @@ urlpatterns = [
         name="firearms_act_certificate",
     ),
     path(
-        "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/identification_markings/",
-        EditIdentificationMarkings.as_view(),
+        "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/identification-markings/",
+        EditIdentificationMarkingsView.as_view(),
         name="identification_markings",
     ),
     path(
-        "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/number_of_items/",
-        EditNumberofItems.as_view(),
+        "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/number-of-items/",
+        EditNumberOfItemsView.as_view(),
         name="number_of_items",
     ),
     path(
-        "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/serial_numbers/",
-        EditSerialNumbers.as_view(),
+        "<uuid:pk>/goods/<uuid:good_pk>/edit-firearm-details/serial-numbers/",
+        EditSerialNumbersView.as_view(),
         name="serial_numbers",
     ),
     path(
@@ -139,11 +145,16 @@ urlpatterns = [
     ),
     path("<uuid:pk>/goods/add-new/<uuid:good_pk>/attach/", goods.AttachDocument.as_view(), name="attach_documents"),
     path("<uuid:pk>/goods/add-preexisting/", goods.ExistingGoodsList.as_view(), name="preexisting_good"),
-    path("<uuid:pk>/goods/<uuid:good_pk>/add/", goods.AddGoodToApplication.as_view(), name="add_good_to_application",),
+    path("<uuid:pk>/goods/<uuid:good_pk>/add/", goods.AddGoodToApplication.as_view(), name="add_good_to_application"),
     path(
         "<uuid:pk>/good-on-application/<uuid:good_on_application_pk>/remove/",
         goods.RemovePreexistingGood.as_view(),
         name="remove_preexisting_good",
+    ),
+    path(
+        "<uuid:pk>/good-on-application/<uuid:good_on_application_pk>/update-serial-numbers/",
+        UpdateSerialNumbersView.as_view(),
+        name="update_serial_numbers",
     ),
     path(
         "<uuid:pk>/goods/<uuid:good_pk>/documents/<uuid:doc_pk>/",
@@ -178,8 +189,10 @@ urlpatterns = [
         name="goods_type_delete_document",
     ),
     # Goods locations
-    path("<uuid:pk>/goods-locations/", locations.GoodsLocation.as_view(), name="location"),
-    path("<uuid:pk>/goods-locations/edit/", locations.EditGoodsLocation.as_view(), name="edit_location"),
+    path("<uuid:pk>/goods-locations/", locations.GoodsLocationView.as_view(), name="location"),
+    path("<uuid:pk>/goods-locations/edit/", locations.GoodsStartingPointFormView.as_view(), name="edit_location"),
+    path("<uuid:pk>/goods-recipients/", locations.GoodsRecipientsFormView.as_view(), name="goods_recipients"),
+    path("<uuid:pk>/goods-locations-summary/", locations.LocationsSummaryView.as_view(), name="locations_summary"),
     path("<uuid:pk>/goods-locations/existing-sites/", locations.ExistingSites.as_view(), name="existing_sites"),
     path(
         "<uuid:pk>/goods-locations/external-locations/select/",
@@ -220,13 +233,56 @@ urlpatterns = [
     ),
     # End User
     path("<uuid:pk>/end-user/", end_users.EndUser.as_view(), name="end_user"),
-    path("<uuid:pk>/end-user/add/", end_users.AddEndUser.as_view(), name="add_end_user"),
-    path("<uuid:pk>/end-user/set/", end_users.SetEndUser.as_view(), name="set_end_user"),
+    path("<uuid:pk>/end-user/add/", end_users.AddEndUserView.as_view(), name="add_end_user"),
+    path("<uuid:pk>/end-user/set/", end_users.SetEndUserView.as_view(), name="set_end_user"),
     path("<uuid:pk>/end-user/copy/", end_users.CopyEndUsers.as_view(), name="end_users_copy"),
     path("<uuid:pk>/end-user/<uuid:obj_pk>/", end_users.EndUser.as_view(), name="end_user"),
-    path("<uuid:pk>/end-user/<uuid:obj_pk>/edit/", end_users.EditEndUser.as_view(), name="edit_end_user"),
-    path("<uuid:pk>/end-user/<uuid:obj_pk>/copy/", end_users.CopyEndUser.as_view(), name="copy_end_user"),
-    path("<uuid:pk>/end-user/<uuid:obj_pk>/remove/", end_users.RemoveEndUser.as_view(), name="remove_end_user"),
+    path("<uuid:pk>/end-user/<uuid:obj_pk>/summary/", end_users.PartySummaryView.as_view(), name="end_user_summary"),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/sub-type/",
+        end_users.PartySubTypeEditView.as_view(),
+        name="end_user_edit_sub_type",
+    ),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/name/", end_users.PartyNameEditView.as_view(), name="end_user_edit_name"
+    ),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/website/",
+        end_users.PartyWebsiteEditView.as_view(),
+        name="end_user_edit_website",
+    ),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/address/",
+        end_users.PartyAddressEditView.as_view(),
+        name="end_user_edit_address",
+    ),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/signatory/",
+        end_users.PartySignatoryEditView.as_view(),
+        name="end_user_edit_signatory",
+    ),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/document_option/",
+        end_users.PartyDocumentOptionEditView.as_view(),
+        name="end_user_document_option",
+    ),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/undertaking_document/",
+        end_users.PartyUndertakingDocumentEditView.as_view(),
+        name="end_user_edit_undertaking_document",
+    ),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/edit/<document_type>/",
+        end_users.PartyDocumentEditView.as_view(),
+        name="end_user_edit_document",
+    ),
+    path("<uuid:pk>/end-user/<uuid:obj_pk>/copy/", end_users.CopyEndUserView.as_view(), name="copy_end_user"),
+    path("<uuid:pk>/end-user/<uuid:obj_pk>/remove/", end_users.RemoveEndUserView.as_view(), name="remove_end_user"),
+    path(
+        "<uuid:pk>/end-user/<uuid:obj_pk>/document/<document_pk>/",
+        end_users.PartyDocumentDownloadView.as_view(),
+        name="party_document_download",
+    ),
     path(
         "<uuid:pk>/end-user/<uuid:obj_pk>/document/attach/",
         documents.AttachDocuments.as_view(),
@@ -269,11 +325,17 @@ urlpatterns = [
     # End use details
     path("<uuid:pk>/end-use-details/", end_use_details.EndUseDetails.as_view(), name="end_use_details"),
     path("<uuid:pk>/route-of-goods/", route_of_goods.RouteOfGoods.as_view(), name="route_of_goods"),
+    # Temporary or permanent
+    path(
+        "<uuid:pk>/temporary-or-permanent/",
+        locations.TemporaryOrPermanentFormView.as_view(),
+        name="temporary_or_permanent",
+    ),
     # Temporary export details
     path(
-        "<uuid:pk>/temporary-export-details/",
-        temporary_export_details.TemporaryExportDetails.as_view(),
-        name="temporary_export_details",
+        "<uuid:pk>/export-details/",
+        export_details.ExportDetails.as_view(),
+        name="export_details",
     ),
     # Ultimate end users
     path("<uuid:pk>/ultimate-end-users/", ultimate_end_users.UltimateEndUsers.as_view(), name="ultimate_end_users"),

@@ -16,7 +16,11 @@ INSTALLED_APPS += [
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, "exporter/templates"), os.path.join(BASE_DIR, "core/forms/templates"),],
+        "DIRS": [
+            os.path.join(BASE_DIR, "exporter/templates"),
+            os.path.join(BASE_DIR, "core/forms/templates"),
+            os.path.join(BASE_DIR, "core/templates"),
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -30,19 +34,27 @@ TEMPLATES = [
     },
 ]
 
-
-LOGIN_REDIRECT_URL = reverse_lazy("core:home")
 LOGOUT_URL = f"{AUTHBROKER_URL}/sso/accounts/logout/?next="
 AUTHBROKER_SCOPE = "profile"
 AUTHBROKER_AUTHORIZATION_URL = urljoin(AUTHBROKER_URL, "sso/oauth2/authorize/")
 AUTHBROKER_TOKEN_URL = urljoin(AUTHBROKER_URL, "sso/oauth2/token/")
 AUTHBROKER_PROFILE_URL = urljoin(AUTHBROKER_URL, "sso/oauth2/user-profile/v1/")
+LOGIN_REDIRECT_URL = reverse_lazy("core:home")
+
+FEATURE_FLAG_GOVUK_SIGNIN_ENABLED = env.bool("FEATURE_FLAG_GOVUK_SIGNIN_ENABLED", False)
+
+if FEATURE_FLAG_GOVUK_SIGNIN_ENABLED:
+    LOGOUT_URL = f"{AUTHBROKER_URL}/logout"
+    AUTHBROKER_SCOPE = "openid,email,offline_access"
+    AUTHBROKER_AUTHORIZATION_URL = urljoin(AUTHBROKER_URL, "authorize")
+    AUTHBROKER_TOKEN_URL = urljoin(AUTHBROKER_URL, "token")
+    AUTHBROKER_PROFILE_URL = urljoin(AUTHBROKER_URL, "userinfo")
+
 
 AUTHENTICATION_BACKENDS = []
 
 FEEDBACK_URL = env.str("FEEDBACK_URL")
 INTERNAL_FRONTEND_URL = env.str("INTERNAL_FRONTEND_URL")
-GOOGLE_ANALYTICS_KEY = env.str("GOOGLE_ANALYTICS_KEY")
 
 
 # static files
@@ -88,7 +100,9 @@ CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
         "LOCATION": REDIS_URL,
-        "OPTIONS": {"CLIENT_CLASS": "django_redis.client.DefaultClient",},
+        "OPTIONS": {
+            "CLIENT_CLASS": "django_redis.client.DefaultClient",
+        },
     }
 }
 

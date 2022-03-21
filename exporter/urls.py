@@ -25,6 +25,7 @@ urlpatterns += [
     path("ecju-queries/", include("exporter.ecju_queries.urls"), name="ecju-queries"),
     path("", include("exporter.hmrc.urls")),
     path("feedback/", include("core.feedback.urls")),
+    path("cookies/", include("core.cookies.urls")),
 ]
 
 handler403 = exporter.core.views.handler403
@@ -32,4 +33,6 @@ handler403 = exporter.core.views.handler403
 if settings.FEATURE_DEBUG_TOOLBAR_ON:
     import debug_toolbar
 
-    urlpatterns = [path("__debug__/", include(debug_toolbar.urls)),] + urlpatterns
+    urlpatterns = [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ] + urlpatterns

@@ -2,8 +2,9 @@ from collections import defaultdict
 
 from caseworker.users.services import get_gov_user
 from core import client
+from core.constants import CaseStatusEnum
 from core.helpers import convert_value_to_query_param
-from caseworker.cases.constants import CaseType, CaseStatusEnum
+from caseworker.cases.constants import CaseType
 from lite_forms.components import Option
 
 
@@ -44,7 +45,7 @@ def get_countries(request, convert_to_options=False, exclude: list = None):
 
 # CaseStatuesEnum
 def get_statuses(request, convert_to_options=False):
-    """ Get static list of case statuses. """
+    """Get static list of case statuses."""
     data = client.get(request, "/static/statuses/")
     if convert_to_options:
         return [Option(key=item["id"], value=item["value"]) for item in data.json().get("statuses")]
@@ -53,7 +54,7 @@ def get_statuses(request, convert_to_options=False):
 
 
 def get_permissible_statuses(request, case):
-    """ Get a list of case statuses permissible for the user's role. """
+    """Get a list of case statuses permissible for the user's role."""
 
     user, _ = get_gov_user(request, str(request.session["lite_api_user_id"]))
     user_permissible_statuses = user["user"]["role"]["statuses"]
@@ -99,7 +100,13 @@ def get_permissible_statuses(request, case):
     elif case_type == CaseType.COMPLIANCE.value:
         if case_sub_type == CaseType.COMPLIANCE_SITE.value:
             case_type_applicable_statuses = [
-                status for status in statuses if status["key"] in [CaseStatusEnum.OPEN, CaseStatusEnum.CLOSED,]
+                status
+                for status in statuses
+                if status["key"]
+                in [
+                    CaseStatusEnum.OPEN,
+                    CaseStatusEnum.CLOSED,
+                ]
             ]
         elif case_sub_type == CaseType.COMPLIANCE_VISIT.value:
             case_type_applicable_statuses = [

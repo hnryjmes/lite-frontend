@@ -1,0 +1,69 @@
+{% extends 'layouts/two-pane.html' %}
+
+{% block back_link %}
+	<a href="{{ back_link_url }}" id="back-link" class="govuk-back-link">{% lcs 'generic.BACK' %}</a>
+{% endblock %}
+
+{% block body %}
+
+<h1 class="govuk-heading-xl">Product location and journey summary</h1>
+
+<dl class="govuk-summary-list govuk-!-margin-bottom-9" id="good-locations-summary">
+
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Where will the products begin their export journey?</dt>
+		<dd class="govuk-summary-list__value">{{ application.goods_starting_point|verbose_goods_starting_point }}</dd>
+	</div>
+
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Are the products being permanently exported?</dt>
+		<dd class="govuk-summary-list__value">{% if application.export_type.key == "permanent" %}Yes{% else %}No{% endif %}</dd>
+	</div>
+
+	{% if application.export_type.key == "temporary" %}
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Explain why the products are being exported temporarily</dt>
+		<dd class="govuk-summary-list__value">{{ application.temp_export_details }}</dd>
+	</div>
+
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Will the products remain under your direct control while overseas?</dt>
+		<dd class="govuk-summary-list__value">{{ application.is_temp_direct_control|yesno|capfirst }}</dd>
+	</div>
+
+	{% if not application.is_temp_direct_control %}
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Who will be in control of the products while overseas, and what is your relationship to them?</dt>
+		<dd class="govuk-summary-list__value">{{ application.temp_direct_control_details }}</dd>
+	</div>
+	{% endif %}
+
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Proposed date the products will return to the UK</dt>
+		<dd class="govuk-summary-list__value">{{ application.proposed_return_date|str_date_only }}</dd>
+	</div>
+	{% endif %}
+
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Are the products being shipped from the UK on an air waybill or bill of lading?</dt>
+		<dd class="govuk-summary-list__value">{{ application.is_shipped_waybill_or_lading|yesno|capfirst }}</dd>
+	</div>
+
+	{% if not application.is_shipped_waybill_or_lading %}
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Provide details of the route of the products</dt>
+		<dd class="govuk-summary-list__value">{{ application.non_waybill_or_lading_route_details }}</dd>
+	</div>
+	{% endif %}
+
+	<div class="govuk-summary-list__row">
+		<dt class="govuk-summary-list__key">Who are the products going to?</dt>
+		<dd class="govuk-summary-list__value">{{ application.goods_recipients|sentence_case }}</dd>
+	</div>
+</dl>
+
+<div class="govuk-button-group">
+	<a id="submit" href="{% url 'applications:task_list' application.id %}" class="govuk-button" data-module="govuk-button">Submit</a>
+	<a href="{% url 'applications:export_details' application.id %}" role="button" draggable="false" class="govuk-button govuk-button--secondary"> Edit </a>
+</div>
+{% endblock %}

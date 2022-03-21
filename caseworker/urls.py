@@ -22,6 +22,7 @@ urlpatterns = [
     path("api/", include("core.api.urls")),  # proxies for lite-api views. used by frontend javascript
     path("", include("caseworker.external_data.urls")),
     path("feedback/", include("core.feedback.urls")),
+    path("cookies/", include("core.cookies.urls")),
 ]
 
 if settings.LITE_API_SEARCH_ENABLED:
@@ -35,7 +36,9 @@ if settings.FEATURE_SPIRE_SEARCH_ON:
 if settings.FEATURE_DEBUG_TOOLBAR_ON:
     import debug_toolbar
 
-    urlpatterns = [path("__debug__/", include(debug_toolbar.urls)),] + urlpatterns
+    urlpatterns = [
+        path("__debug__/", include(debug_toolbar.urls)),
+    ] + urlpatterns
 
 
 handler403 = caseworker.core.views.handler403

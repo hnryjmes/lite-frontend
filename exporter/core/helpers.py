@@ -2,12 +2,15 @@ from dateutil.parser import parse
 from html import escape
 from typing import List
 
+from django.conf import settings
 from django.template.defaultfilters import safe
 from django.templatetags.tz import localtime
 from django.utils.safestring import mark_safe
+from storages.backends.s3boto3 import S3Boto3Storage
 
 from exporter.core import decorators
 from exporter.core import constants
+from exporter.core.constants import AddGoodFormSteps, SetPartyFormSteps
 from core.builtins.custom_tags import default_na
 from exporter.organisation.roles.services import get_user_permissions
 
@@ -142,3 +145,127 @@ def get_firearms_subcategory(type):
     is_firearms_accessory = type == constants.FIREARMS_ACCESSORY
     is_firearms_software_or_tech = type in constants.FIREARMS_SOFTWARE_TECH
     return is_firearm, is_firearm_ammunition_or_component, is_firearms_accessory, is_firearms_software_or_tech
+
+
+class NoSaveStorage(S3Boto3Storage):
+    def save(self, name, content, max_length=None):
+        # We don't actually need to save anything here as our file is already
+        # on S3.
+        return content.obj.key
+
+    def delete(self, name):
+        # We don't actually want to delete anything here as we'll be sending
+        # the key to the API that will pick this up so we want it to persist
+        # in the S3 bucket.
+        pass
+
+
+def is_category_firearms(wizard):
+    product_category_cleaned_data = wizard.get_cleaned_data_for_step(AddGoodFormSteps.PRODUCT_CATEGORY)
+    if not product_category_cleaned_data:
+        return True
+
+    item_category = product_category_cleaned_data["item_category"]
+    return item_category == constants.PRODUCT_CATEGORY_FIREARM or settings.FEATURE_FLAG_ONLY_ALLOW_FIREARMS_PRODUCTS
+
+
+def is_product_type(product_type):
+    def _is_product_type(wizard):
+        type_ = wizard.get_product_type()
+
+        if not type_:
+            return True
+
+        (
+            is_firearm,
+            is_ammunition_or_component,
+            is_firearms_accessory,
+            is_firearms_software_or_tech,
+        ) = get_firearms_subcategory(type_)
+
+        return {
+            "firearm": is_firearm,
+            "ammunition_or_component": is_ammunition_or_component,
+            "firearms_accessory": is_firearms_accessory,
+            "firearms_software_or_tech": is_firearms_software_or_tech,
+        }[product_type]
+
+    return _is_product_type
+
+
+def is_draft(wizard):
+    try:
+        return bool(str(wizard.kwargs["pk"]))
+    except KeyError:
+        return False
+
+
+def is_pv_graded(wizard):
+    add_goods_cleaned_data = wizard.get_cleaned_data_for_step(AddGoodFormSteps.ADD_GOODS_QUESTIONS)
+
+    return str_to_bool(add_goods_cleaned_data.get("is_pv_graded"))
+
+
+def show_serial_numbers_form(indentification_markings_step_name):
+    def _show_serial_numbers_form(wizard):
+        cleaned_data = wizard.get_cleaned_data_for_step(indentification_markings_step_name)
+        return cleaned_data.get("serial_numbers_available") == "AVAILABLE"
+
+    return _show_serial_numbers_form
+
+
+def is_preexisting(default):
+    def _is_preexisting(wizard):
+        return str_to_bool(wizard.request.GET.get("preexisting", default))
+
+    return _is_preexisting
+
+
+def show_rfd_form(wizard):
+    preexisting = is_preexisting(False)(wizard)
+
+    try:
+        application = wizard.application
+    except AttributeError:
+        application = {}
+
+    if preexisting:
+        return is_product_type("ammunition_or_component")(wizard) and has_expired_rfd_certificate(application)
+
+    return is_product_type("ammunition_or_component")(wizard) and not has_valid_rfd_certificate(application)
+
+
+def show_attach_rfd_form(wizard):
+    cleaned_data = wizard.get_cleaned_data_for_step(AddGoodFormSteps.REGISTERED_FIREARMS_DEALER)
+
+    return str_to_bool(cleaned_data.get("is_registered_firearm_dealer"))
+
+
+def has_expired_rfd_certificate(application):
+    document = get_rfd_certificate(application)
+    return bool(document) and document["is_expired"]
+
+
+def has_valid_rfd_certificate(application):
+    document = get_rfd_certificate(application)
+    return bool(document) and not document["is_expired"]
+
+
+def get_rfd_certificate(application):
+    documents = {item["document_type"]: item for item in application.get("organisation", {}).get("documents", [])}
+    return documents.get("rfd-certificate")
+
+
+def is_end_user_document_available(wizard):
+    cleaned_data = wizard.get_cleaned_data_for_step(SetPartyFormSteps.PARTY_DOCUMENTS)
+    return str_to_bool(cleaned_data.get("end_user_document_available"))
+
+
+def is_document_in_english(wizard):
+    cleaned_data = wizard.get_cleaned_data_for_step(SetPartyFormSteps.PARTY_DOCUMENT_UPLOAD)
+    return str_to_bool(cleaned_data.get("document_in_english"))
+
+
+def is_document_on_letterhead(wizard):
+    cleaned_data = wizard.get_cleaned_data_for_step(SetPartyFormSteps.PARTY_DOCUMENT_UPLOAD)
+    return str_to_bool(cleaned_data.get("document_on_letterhead"))

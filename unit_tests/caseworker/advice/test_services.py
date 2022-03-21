@@ -6,7 +6,7 @@ from caseworker.advice.services import (
     FCDO_TEAM,
     LICENSING_UNIT_TEAM,
     LU_POST_CIRC_FINALISE_QUEUE,
-    MOD_CASES_TO_REVIEW_QUEUE,
+    MOD_CASES_TO_REVIEW_QUEUES,
     MOD_CONSOLIDATE_QUEUES,
     MOD_CONSOLIDATE_TEAMS,
     MOD_ECJU_TEAM,
@@ -66,10 +66,12 @@ advice_tab_test_data = [
     # An individual accessing the case after giving countersigned advice
     (True, "user", True, FCDO_TEAM, FCDO_COUNTERSIGNING_QUEUE, "cases:countersign_view", {"edit_recommendation": True, "move_case_forward": True},),
     # An individual consolidating advice on a case for the first time
-    (True, "user", True, MOD_ECJU_TEAM, MOD_CASES_TO_REVIEW_QUEUE, "cases:consolidate_advice_view", {"review_and_combine": True},),
+    (True, "user", True, MOD_ECJU_TEAM, MOD_CASES_TO_REVIEW_QUEUES[0], "cases:consolidate_advice_view", {"review_and_combine": True},),
+    (True, "user", True, MOD_ECJU_TEAM, MOD_CASES_TO_REVIEW_QUEUES[1], "cases:consolidate_advice_view", {"review_and_combine": True},),
     (True, "user", True, LICENSING_UNIT_TEAM, LU_POST_CIRC_FINALISE_QUEUE, "cases:consolidate_advice_view", {"review_and_combine": True},),
     # An individual accessing the case after consolidating advice
-    (True, "team", True, MOD_ECJU_TEAM, MOD_CASES_TO_REVIEW_QUEUE, "cases:consolidate_view", {"edit_recommendation": True, "move_case_forward": True},),
+    (True, "team", True, MOD_ECJU_TEAM, MOD_CASES_TO_REVIEW_QUEUES[0], "cases:consolidate_view", {"edit_recommendation": True, "move_case_forward": True},),
+    (True, "team", True, MOD_ECJU_TEAM, MOD_CASES_TO_REVIEW_QUEUES[1], "cases:consolidate_view", {"edit_recommendation": True, "move_case_forward": True},),
     (True, "final", True, LICENSING_UNIT_TEAM, LU_POST_CIRC_FINALISE_QUEUE, "cases:consolidate_view", {"edit_recommendation": True, "move_case_forward": True},),
     # Any individual accessing a case from any other queue (the fallback position)
     (True, "user", False, "any_team", "any_queue", "cases:advice_view", {},),
@@ -79,15 +81,16 @@ advice_tab_test_data = [
 
 @pytest.mark.parametrize("test_data", advice_tab_test_data)
 def test_get_advice_tab_context(advice, data_standard_case, current_user, test_data):
-    has_advice, advice_level, countersigned, team, queue, url, buttons = test_data
+    has_advice, advice_level, countersigned, team_alias, queue_alias, url, buttons = test_data
+    queue_detail = data_standard_case["case"]["queue_details"][0]
     if has_advice:
         advice[0]["level"] = advice_level
         if countersigned:
             advice[0]["countersigned_by"] = current_user
         data_standard_case["case"]["advice"] = advice
-    current_user["team"]["id"] = team
-
-    context = get_advice_tab_context(Case(data_standard_case["case"]), current_user, queue)
+    current_user["team"]["alias"] = team_alias
+    queue_detail["alias"] = queue_alias
+    context = get_advice_tab_context(Case(data_standard_case["case"]), current_user, queue_detail["id"])
 
     assert context["url"] == url
     for button_name, enabled in context["buttons"].items():

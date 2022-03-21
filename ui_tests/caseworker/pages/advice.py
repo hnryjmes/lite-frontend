@@ -1,4 +1,5 @@
 from selenium.common.exceptions import WebDriverException
+from selenium.webdriver.common.by import By
 
 from tests_common import selectors
 from ui_tests.caseworker.pages.BasePage import BasePage
@@ -83,3 +84,90 @@ class FinalAdvicePage(BaseAdvicePage):
 
     def click_clear_advice(self):
         self.driver.find_element_by_id(self.BUTTON_CLEAR_ADVICE_ID).click()
+
+
+class RecommendationsAndDecisionPage(BasePage):
+    def click_make_recommendation(self):
+        self.driver.find_element(by=By.XPATH, value="//a[contains(text(), 'Make recommendation')]").click()
+
+    def click_approve_all(self):
+        self.driver.find_element(by=By.XPATH, value="//input[@type='radio' and @value='approve_all']").click()
+
+    def click_refuse_all(self):
+        self.driver.find_element(by=By.XPATH, value="//input[@type='radio' and @value='refuse_all']").click()
+
+    def select_country(self, country):
+        self.driver.find_element(by=By.XPATH, value=f"//input[@type='checkbox' and @value='{country}']").click()
+
+    def select_refusal_criteria(self, criteria):
+        self.driver.find_element(by=By.XPATH, value=f"//input[@type='checkbox' and @value='{criteria}']").click()
+
+    def enter_reasons_for_approving(self, reasons):
+        el = self.driver.find_element(by=By.XPATH, value="//textarea[@name='approval_reasons']")
+        el.clear()
+        el.send_keys(reasons)
+
+    def enter_reasons_for_refusal(self, reasons):
+        el = self.driver.find_element(by=By.XPATH, value="//textarea[@name='refusal_reasons']")
+        el.clear()
+        el.send_keys(reasons)
+
+    def enter_licence_condition(self, licence_condition):
+        el = self.driver.find_element(by=By.XPATH, value="//textarea[@name='proviso']")
+        el.clear()
+        el.send_keys(licence_condition)
+
+    def enter_instructions_for_exporter(self, instructions):
+        el = self.driver.find_element(by=By.XPATH, value="//textarea[@name='instructions_to_exporter']")
+        el.clear()
+        el.send_keys(instructions)
+
+    def enter_reporting_footnote(self, footnote):
+        el = self.driver.find_element(by=By.XPATH, value="//textarea[@name='footnote_details']")
+        el.clear()
+        el.send_keys(footnote)
+
+    def get_reasons_for_approving(self):
+        return self.driver.find_element(
+            by=By.XPATH,
+            value="//p[ancestor::div[preceding-sibling::*[self::h2 or self::h3]"
+            "[contains(text(), 'Reason for approving') or contains(text(), 'Reasons for approving')]]][2]",
+        ).text
+
+    def get_reasons_for_refusal(self):
+        return self.driver.find_element(
+            by=By.XPATH,
+            value="//p[ancestor::div[preceding-sibling::*[self::h2 or self::h3]"
+            "[contains(text(), 'Reason for refusing') or contains(text(), 'Reasons for refusing')]]][2]",
+        ).text
+
+    def get_licence_condition(self):
+        return self.driver.find_element(
+            by=By.XPATH,
+            value="//p[ancestor::div[preceding-sibling::*[self::h2 or self::h3]"
+            "[contains(text(), 'Licence condition')]]][2]",
+        ).text
+
+    def get_instructions_for_exporter(self):
+        return self.driver.find_element(
+            by=By.XPATH,
+            value="//p[ancestor::div[preceding-sibling::*[self::h2 or self::h3]"
+            "[contains(text(), 'Additional instructions')]]][2]",
+        ).text
+
+    def get_reporting_footnote(self):
+        return self.driver.find_element(
+            by=By.XPATH,
+            value="//p[ancestor::div[preceding-sibling::*[self::h2 or self::h3]"
+            "[contains(text(), 'Reporting footnote')]]][2]",
+        ).text
+
+    def get_refusal_criteria(self):
+        """Return the refusal criteria for each destination as a list."""
+        return [
+            r.find_element(by=By.XPATH, value="td[5]").text
+            for r in self.driver.find_elements(
+                by=By.XPATH,
+                value="//tbody/tr",
+            )
+        ]

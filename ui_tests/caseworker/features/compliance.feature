@@ -20,7 +20,7 @@ Feature: I want to generate and view compliance cases on approval and proviso of
     And I go to application previously created
     Then The licence information is in the second audit
 
-  @skip @regression @LT_2723
+  @skip @legacy
   Scenario: Create compliance case
     When I go to the compliance case created
     And I click on the licences tab
@@ -47,4 +47,3 @@ Feature: I want to generate and view compliance cases on approval and proviso of
     Then I see knowledge of controlled product details
     When I go to the ECJU queries tab
     Then I see different ecju query buttons
-    

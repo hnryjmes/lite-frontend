@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "crispy_forms_gds",
     "core.feedback",
     "formtools",
+    "core.cookies",
+    "core.goods",
 ]
 
 MIDDLEWARE = [
@@ -92,10 +94,18 @@ MESSAGE_STORAGE = "django.contrib.messages.storage.session.SessionStorage"
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",},
-    {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",},
-    {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",},
-    {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",},
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
 ]
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = ["gds"]
@@ -191,6 +201,9 @@ LOGGING = {
     },
     "root": {"handlers": ["stdout", "ecs"], "level": env.str("LOG_LEVEL", "info").upper()},
 }
+additional_logger_config = env.json("ADDITIONAL_LOGGER_CONFIG", default=None)
+if additional_logger_config:
+    LOGGING["loggers"] = additional_logger_config
 
 # Enable security features in hosted environments
 
@@ -282,3 +295,6 @@ AUTHBROKER_TOKEN_INTROSPECTION_TTL = env.int("AUTHBROKER_TOKEN_INTROSPECTION_TTL
 NOTIFY_KEY = env.str("NOTIFY_KEY", default="notify-test")
 NOTIFY_FEEDBACK_TEMPLATE_ID = env.str("NOTIFY_FEEDBACK_TEMPLATE_ID")
 NOTIFY_FEEDBACK_EMAIL = env.str("NOTIFY_FEEDBACK_EMAIL")
+
+# GA/GTM KEY
+GTM_ID = env.str("GTM_ID", default="")

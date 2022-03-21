@@ -192,7 +192,7 @@ def mock_gov_user(requests_mock, mock_notifications, mock_case_statuses):
             "first_name": "Foo",
             "last_name": "Bar",
             "status": "Active",
-            "team": {"id": "00000000-0000-0000-0000-000000000001", "name": "Admin"},
+            "team": {"id": "00000000-0000-0000-0000-000000000001", "name": "Admin", "alias": None},
             "role": {
                 "id": "00000000-0000-0000-0000-000000000002",
                 "name": "Super User",
@@ -274,14 +274,17 @@ def mock_denial_reasons(requests_mock):
     url = client._build_absolute_uri("/static/denial-reasons/")
     data = {
         "denial_reasons": [
-            {"id": "1", "display_value": "one"},
-            {"id": "1a", "display_value": "one a"},
-            {"id": "2", "display_value": "two"},
-            {"id": "2a", "display_value": "two a"},
-            {"id": "2b", "display_value": "two b"},
-            {"id": "5a", "display_value": "five a"},
-            {"id": "5b", "display_value": "five b"},
-            {"id": "M", "display_value": "MMMM"},
+            {"id": "1", "display_value": "one", "deprecated": False},
+            {"id": "1a", "display_value": "one a", "deprecated": False},
+            {"id": "2", "display_value": "two", "deprecated": False},
+            {"id": "2a", "display_value": "two a", "deprecated": False},
+            {"id": "2b", "display_value": "two b", "deprecated": False},
+            {"id": "3", "display_value": "two", "deprecated": False},
+            {"id": "4", "display_value": "two", "deprecated": False},
+            {"id": "5", "display_value": "two", "deprecated": False},
+            {"id": "5a", "display_value": "five a", "deprecated": False},
+            {"id": "5b", "display_value": "five b", "deprecated": False},
+            {"id": "M", "display_value": "MMMM", "deprecated": False},
         ]
     }
     yield requests_mock.get(url=url, json=data)
@@ -302,7 +305,13 @@ def current_user():
         "last_name": "User",
         "role_name": "Super User",
         "status": "Active",
-        "team": {"id": "00000000-0000-0000-0000-000000000001", "is_ogd": False, "name": "Admin", "part_of_ecju": None,},
+        "team": {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "alias": None,
+            "is_ogd": False,
+            "name": "Admin",
+            "part_of_ecju": None,
+        },
     }
 
 
@@ -315,7 +324,13 @@ def team1_user():
         "last_name": "User",
         "role_name": "Super User",
         "status": "Active",
-        "team": {"id": "12345678-42c8-499f-a58d-94f945411234", "name": "Team1", "part_of_ecju": True, "is_ogd": False,},
+        "team": {
+            "id": "12345678-42c8-499f-a58d-94f945411234",
+            "name": "Team1",
+            "alias": "TEAM1",
+            "part_of_ecju": True,
+            "is_ogd": False,
+        },
     }
 
 
@@ -331,6 +346,7 @@ def MOD_team1_user():
         "team": {
             "id": "2e5fab3c-4599-432e-9540-74ccfafb18ee",
             "name": "MoD Team1",
+            "alias": "MOD_DI",
             "part_of_ecju": False,
             "is_ogd": True,
         },
@@ -349,6 +365,7 @@ def MOD_team2_user():
         "team": {
             "id": "809eba0f-f197-4f0f-949b-9af309a844fb",
             "name": "MoD Team2",
+            "alias": "MOD_DSTL",
             "part_of_ecju": False,
             "is_ogd": True,
         },
@@ -367,6 +384,7 @@ def MOD_ECJU_team_user():
         "team": {
             "id": "b7640925-2577-4c24-8081-b85bd635b62a",
             "name": "MoD ECJU",
+            "alias": "MOD_ECJU",
             "part_of_ecju": False,
             "is_ogd": True,
         },
@@ -385,6 +403,7 @@ def FCDO_team_user():
         "team": {
             "id": "67b9a4a3-6f3d-4511-8a19-23ccff221a74",
             "name": "FCDO Team",
+            "alias": "FCO",
             "part_of_ecju": False,
             "is_ogd": True,
         },
@@ -446,6 +465,7 @@ def advice_for_countersign(current_user):
                     "id": "2e5fab3c-4599-432e-9540-74ccfafb18ee",
                     "is_ogd": False,
                     "name": "Team-A",
+                    "alias": None,
                     "part_of_ecju": False,
                 },
             },
@@ -477,6 +497,7 @@ def advice_for_countersign(current_user):
                     "id": "00000000-0000-0000-0000-000000000001",
                     "is_ogd": False,
                     "name": "TeamB",
+                    "alias": None,
                     "part_of_ecju": True,
                 },
             },
@@ -508,6 +529,7 @@ def advice_for_countersign(current_user):
                     "id": "00000000-0000-0000-0000-000000000001",
                     "is_ogd": False,
                     "name": "TeamB",
+                    "alias": None,
                     "part_of_ecju": True,
                 },
             },
@@ -778,7 +800,7 @@ def mock_blocking_flags(requests_mock):
             "priority": 0,
             "blocks_finalising": True,
             "removable_by": "Anyone",
-            "team": {"id": "00000000-0000-0000-0000-000000000001", "name": "Admin"},
+            "team": {"id": "00000000-0000-0000-0000-000000000001", "name": "Admin", "alias": None},
         }
     ]
     requests_mock.get(url=url, json=data)
@@ -1082,12 +1104,12 @@ advice_template = {
 
 @pytest.fixture
 def team1():
-    return {"id": "136cbb1f-390b-4f78-bfca-86300edec300", "name": "A team", "part_of_ecju": None}
+    return {"id": "136cbb1f-390b-4f78-bfca-86300edec300", "name": "A team", "part_of_ecju": None, "alias": None}
 
 
 @pytest.fixture
 def team2():
-    return {"id": "0017ed1f-390b-4f78-bfca-86300edec300", "name": "B team", "part_of_ecju": None}
+    return {"id": "0017ed1f-390b-4f78-bfca-86300edec300", "name": "B team", "part_of_ecju": None, "alias": None}
 
 
 @pytest.fixture
@@ -1194,3 +1216,12 @@ def goods_advice2(data_standard_case, jane_doe):
     goods_advice2["user"] = jane_doe
     goods_advice2["good"] = data_standard_case["case"]["data"]["goods"][0]["id"]
     return goods_advice2
+
+
+@pytest.fixture
+def form_team_data():
+    return {
+        "name": "Test",
+        "part_of_ecju": True,
+        "is_ogd": True,
+    }

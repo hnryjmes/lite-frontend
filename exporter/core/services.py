@@ -15,10 +15,8 @@ def get_units(request, units=[]):  # noqa
         return units
     response = client.get(request, "/static/units/")
     response.raise_for_status()
-    parsed = response.json()
+    units = response.json()["units"]
 
-    for key, value in parsed["units"].items():
-        units.append(Option(key, value))
     return units
 
 
@@ -33,7 +31,14 @@ def get_item_types(request):
         if key == "other":
             options.append(
                 Option(
-                    key=key, value=value, components=[TextArea(name="other_item_type", extras={"max_length": 100},),],
+                    key=key,
+                    value=value,
+                    components=[
+                        TextArea(
+                            name="other_item_type",
+                            extras={"max_length": 100},
+                        ),
+                    ],
                 )
             )
         else:
@@ -231,11 +236,16 @@ def get_pv_gradings(request, convert_to_options=False):
         converted_units = []
         for pvg in data.json().get("pv_gradings"):
             for key in pvg:
-                converted_units.append(Option(key=key, value=pvg[key],))
+                converted_units.append(
+                    Option(
+                        key=key,
+                        value=pvg[key],
+                    )
+                )
         return converted_units
 
     data = client.get(request, "/static/private-venture-gradings/")
-    return data.json().get("pv-gradings")
+    return data.json().get("pv_gradings")
 
 
 def get_control_list_entry(request, rating):

@@ -3,6 +3,7 @@ import os
 import pytest
 from dotenv import load_dotenv
 from django.conf import settings
+from conf import exporter
 from django.test import Client
 
 from core import client
@@ -20,7 +21,12 @@ def pytest_configure(config):
 
 
 @pytest.fixture
-def mock_exporter_user(requests_mock):
+def lite_api_user_id():
+    return "d355428a-64cb-4347-853b-afcacee15d93"
+
+
+@pytest.fixture
+def mock_exporter_user(requests_mock, lite_api_user_id):
     url = client._build_absolute_uri("/users/authenticate/")
     data = {
         "user": {
@@ -30,7 +36,7 @@ def mock_exporter_user(requests_mock):
             "last_name": "Bar",
             "status": "Active",
             "token": "foo",
-            "lite_api_user_id": "d355428a-64cb-4347-853b-afcacee15d93",
+            "lite_api_user_id": lite_api_user_id,
         }
     }
 
@@ -39,7 +45,7 @@ def mock_exporter_user(requests_mock):
 
 
 @pytest.fixture
-def mock_exporter_user_me(requests_mock):
+def mock_exporter_user_me(requests_mock, lite_api_user_id):
     url = client._build_absolute_uri("/users/me/")
     data = {
         "user": {
@@ -49,7 +55,7 @@ def mock_exporter_user_me(requests_mock):
             "last_name": "Bar",
             "status": "Active",
             "token": "foo",
-            "lite_api_user_id": "d355428a-64cb-4347-853b-afcacee15d93",
+            "lite_api_user_id": lite_api_user_id,
             "organisations": [
                 {
                     "id": "9bc26604-35ee-4383-9f58-74f8cab67443",
@@ -111,6 +117,18 @@ def authorized_client(authorized_client_factory, mock_exporter_user):
     return authorized_client_factory(mock_exporter_user["user"])
 
 
+@pytest.fixture()
+def mock_get_profile(requests_mock, mock_exporter_user):
+    url = exporter.AUTHBROKER_PROFILE_URL
+    yield requests_mock.get(url=url, json={"sub": "123456789xyzqpr", "email": mock_exporter_user["user"]["email"]})
+
+
+@pytest.fixture(autouse=True)
+def mock_authenticate_user_save(requests_mock, mock_exporter_user):
+    url = client._build_absolute_uri("/user/authenticate/")
+    yield requests_mock.post(url=url)
+
+
 @pytest.fixture
 def mock_countries(requests_mock):
     url = client._build_absolute_uri("/static/countries/")
@@ -120,6 +138,8 @@ def mock_countries(requests_mock):
             {"id": "AE-AZ", "name": "Abu Dhabi", "type": "gov.uk Territory", "is_eu": False},
             {"id": "AF", "name": "Afghanistan", "type": "gov.uk Country", "is_eu": False},
             {"id": "AE-AJ", "name": "Ajman", "type": "gov.uk Territory", "is_eu": False},
+            {"id": "IN", "name": "India", "type": "gov.uk Territory", "is_eu": False},
+            {"id": "US", "name": "United States", "type": "gov.uk Territory", "is_eu": False},
         ]
     }
 

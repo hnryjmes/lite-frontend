@@ -79,7 +79,10 @@ class Applications:
 
     def add_additional_information(self, draft_id, json):
         self.api_client.make_request(
-            method="PUT", url=f"/applications/{draft_id}/", headers=self.api_client.exporter_headers, body=json,
+            method="PUT",
+            url=f"/applications/{draft_id}/",
+            headers=self.api_client.exporter_headers,
+            body=json,
         )
 
     def add_end_use_details(self, draft_id, details):
@@ -129,7 +132,11 @@ class Applications:
             self.add_external_site(site_id=site["id"], draft_id=draft_id)
 
         if draft["application_type"] != "exhc":
-            self.goods.add_good_to_draft(draft_id=draft_id, good=good)
+            if not isinstance(good, list):
+                good = [good]
+
+            for i, g in enumerate(good):
+                self.goods.add_good_to_draft(draft_id=draft_id, good=g, count=i)
         else:
             self.goods.add_good_to_draft(draft_id=draft_id, good=self.request_data["add_exhibition_good"])
             self.add_site(draft_id=draft_id)
@@ -165,7 +172,9 @@ class Applications:
         additional_document_id = self.add_additional_document(draft_id=draft_id)
 
         self._assert_all_documents_are_processed(
-            draft_id=draft_id, parties=parties, additional_document_id=additional_document_id,
+            draft_id=draft_id,
+            parties=parties,
+            additional_document_id=additional_document_id,
         )
 
         return draft_id
@@ -177,7 +186,9 @@ class Applications:
         self.goods.add_hmrc_goods_type(draft_id)
         additional_document_id = self.add_additional_document(draft_id=draft_id)
         self._assert_all_documents_are_processed(
-            draft_id=draft_id, parties=[end_user], additional_document_id=additional_document_id,
+            draft_id=draft_id,
+            parties=[end_user],
+            additional_document_id=additional_document_id,
         )
 
         return draft_id
@@ -218,7 +229,9 @@ class Applications:
         additional_document_id = self.add_additional_document(draft_id=draft_id)
 
         self._assert_all_documents_are_processed(
-            draft_id=draft_id, parties=parties, additional_document_id=additional_document_id,
+            draft_id=draft_id,
+            parties=parties,
+            additional_document_id=additional_document_id,
         )
 
         return draft_id

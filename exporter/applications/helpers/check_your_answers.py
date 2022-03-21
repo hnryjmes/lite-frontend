@@ -15,6 +15,7 @@ from exporter.core.constants import (
     PERMANENT,
     CaseTypes,
     APPLICATION_TYPE_STRINGS,
+    PartyDocumentType,
 )
 from core.constants import GoodsTypeCategory
 from core.builtins.custom_tags import (
@@ -23,6 +24,9 @@ from core.builtins.custom_tags import (
     date_display,
     get_address,
     pluralise_quantity,
+    verbose_goods_starting_point,
+    str_date_only,
+    sentence_case,
 )
 from exporter.core.helpers import convert_to_link, convert_control_list_entries
 from lite_content.lite_exporter_frontend import applications
@@ -94,18 +98,23 @@ def _convert_standard_application(application, editable=False, is_summary=False)
     strings = applications.ApplicationSummaryPage
     pk = application["id"]
     url = reverse(f"applications:good_detail_summary", kwargs={"pk": pk})
+    old_locations = bool(application["goods_locations"])
     converted = {
-        convert_to_link(url, strings.GOODS): convert_goods_on_application(application["goods"]),
+        convert_to_link(url, strings.GOODS): convert_goods_on_application(application["goods"], is_summary=is_summary),
         strings.END_USE_DETAILS: _get_end_use_details(application),
-        strings.ROUTE_OF_GOODS: _get_route_of_goods(application),
-        strings.GOODS_LOCATIONS: _convert_goods_locations(application["goods_locations"]),
         strings.END_USER: convert_party(application["end_user"], application, editable),
         strings.CONSIGNEE: convert_party(application["consignee"], application, editable),
         strings.THIRD_PARTIES: [convert_party(item, application, editable) for item in application["third_parties"]],
         strings.SUPPORTING_DOCUMENTATION: _get_supporting_documentation(application["additional_documents"], pk),
     }
-    if _is_application_export_type_temporary(application):
-        converted[strings.TEMPORARY_EXPORT_DETAILS] = _get_temporary_export_details(application)
+    if old_locations:
+        converted[strings.ROUTE_OF_GOODS] = _get_route_of_goods(application)
+        converted[strings.GOODS_LOCATIONS] = _convert_goods_locations(application["goods_locations"])
+        if _is_application_export_type_temporary(application):
+            converted[strings.TEMPORARY_EXPORT_DETAILS] = _get_temporary_export_details(application)
+    else:
+        product_location = {"Product location and journey": _get_product_location_and_journey(application)}
+        converted = {**product_location, **converted}
     if has_incorporated_goods(application):
         ultimate_end_users = [convert_party(item, application, editable) for item in application["ultimate_end_users"]]
         converted[strings.ULTIMATE_END_USERS] = ultimate_end_users
@@ -115,7 +124,9 @@ def _convert_standard_application(application, editable=False, is_summary=False)
 def _convert_open_application(application, editable=False):
     return {
         **(
-            {applications.ApplicationSummaryPage.GOODS_CATEGORIES: _get_goods_categories(application),}
+            {
+                applications.ApplicationSummaryPage.GOODS_CATEGORIES: _get_goods_categories(application),
+            }
             if application.case_type["reference"]["key"] == CaseTypes.OIEL
             and application.goodstype_category["key"]
             in [GoodsTypeCategory.MILITARY, GoodsTypeCategory.UK_CONTINENTAL_SHELF]
@@ -123,17 +134,25 @@ def _convert_open_application(application, editable=False):
         ),
         applications.ApplicationSummaryPage.GOODS: _convert_goods_types(application["goods_types"]),
         **(
-            {applications.ApplicationSummaryPage.END_USE_DETAILS: _get_end_use_details(application),}
+            {
+                applications.ApplicationSummaryPage.END_USE_DETAILS: _get_end_use_details(application),
+            }
             if not is_application_oiel_of_type("cryptographic", application)
             else {}
         ),
         **(
-            {applications.ApplicationSummaryPage.ROUTE_OF_GOODS: _get_route_of_goods(application),}
+            {
+                applications.ApplicationSummaryPage.ROUTE_OF_GOODS: _get_route_of_goods(application),
+            }
             if not is_application_oiel_of_type("cryptographic", application)
             else {}
         ),
         **(
-            {applications.ApplicationSummaryPage.TEMPORARY_EXPORT_DETAILS: _get_temporary_export_details(application),}
+            {
+                applications.ApplicationSummaryPage.TEMPORARY_EXPORT_DETAILS: _get_temporary_export_details(
+                    application
+                ),
+            }
             if _is_application_export_type_temporary(application)
             else {}
         ),
@@ -205,8 +224,13 @@ def _convert_hmrc_query(application, editable=False):
     }
 
 
-def convert_goods_on_application(goods_on_application, is_exhibition=False):
+def convert_goods_on_application(goods_on_application, is_exhibition=False, is_summary=False):
     converted = []
+
+    def requires_actions(good_on_application):
+        return not is_summary and requires_serial_numbers(good_on_application)
+
+    requires_actions_column = any(requires_actions(g) for g in goods_on_application)
     for good_on_application in goods_on_application:
         # TAU's review is saved at "good on application" level, while exporter's answer is at good level.
         if good_on_application["good"]["is_good_controlled"] is None:
@@ -240,7 +264,23 @@ def convert_goods_on_application(goods_on_application, is_exhibition=False):
             item["Incorporated"] = friendly_boolean(good_on_application["is_good_incorporated"])
             item["Quantity"] = pluralise_quantity(good_on_application)
             item["Value"] = f"£{good_on_application['value']}"
+        if requires_actions(good_on_application):
+            update_serial_numbers_url = reverse(
+                "applications:update_serial_numbers",
+                kwargs={
+                    "pk": good_on_application["application"],
+                    "good_on_application_pk": good_on_application["id"],
+                },
+            )
+            item[mark_safe('<span class="govuk-visually-hidden">Actions</a>')] = mark_safe(  # nosec
+                f'<a class="govuk-link" href="{update_serial_numbers_url}">Add serial numbers</a>'
+            )
+        elif requires_actions_column:
+            item[
+                mark_safe('<span class="govuk-visually-hidden">Actions</a>')  # nosec
+            ] = " "  # Not just an empty string or it will get converted into N/A
         converted.append(item)
+
     return converted
 
 
@@ -253,6 +293,37 @@ def _get_exhibition_details(application):
     if application["reason_for_clearance"]:
         data["Reason for clearance"] = application["reason_for_clearance"]
     return data
+
+
+def _get_product_location_and_journey(application):
+    is_permanent = application.export_type["key"] == "permanent"
+    locations_details = {
+        "Where will the products begin their export journey?": verbose_goods_starting_point(
+            application["goods_starting_point"]
+        ),
+        "Are the products being permanently exported?": friendly_boolean(is_permanent),
+    }
+    if not is_permanent:
+        locations_details["Explain why the products are being exported temporarily"] = application.temp_export_details
+        locations_details[
+            "Will the products remain under your direct control while overseas?"
+        ] = application.is_temp_direct_control
+        locations_details[
+            "Who will be in control of the products while overseas, and what is your relationship to them?"
+        ] = application.temp_direct_control_details
+        locations_details["Proposed date the products will return to the UK"] = str_date_only(
+            application.proposed_return_date
+        )
+
+    locations_details[
+        "Are the products being shipped from the UK on an air waybill or bill of lading?"
+    ] = friendly_boolean(application.is_shipped_waybill_or_lading)
+
+    if not application.is_shipped_waybill_or_lading:
+        locations_details["Route details"] = application.non_waybill_or_lading_route_details
+
+    locations_details["Who are the products going to?"] = sentence_case(application.goods_recipients)
+    return locations_details
 
 
 def _convert_goods_types(goods_types):
@@ -407,6 +478,33 @@ def _get_temporary_export_details(application):
         return values_to_print
 
 
+def get_end_user_data(application, party, editable):
+    data = {}
+    document_availability_key = "Do you have an end-user document?"
+    if party["end_user_document_available"]:
+        data[document_availability_key] = "Yes"
+        for doc in party["documents"]:
+            document_type = PartyDocumentType.SUPPORTING_DOCUMENT
+            if doc["type"] == PartyDocumentType.END_USER_UNDERTAKING_DOCUMENT:
+                document_type = "End user document"
+            if doc["type"] == PartyDocumentType.END_USER_ENGLISH_TRANSLATION_DOCUMENT:
+                document_type = "English translation of the end user document"
+            if doc["type"] == PartyDocumentType.END_USER_COMPANY_LETTERHEAD_DOCUMENT:
+                document_type = "Document on company letterhead"
+
+            data[document_type] = _convert_end_user_document(application["id"], party["id"], doc, editable)
+
+            if doc["type"] == PartyDocumentType.END_USER_UNDERTAKING_DOCUMENT and party["product_differences_note"]:
+                key = "Describe any differences between products listed in the document and products on the application (optional)"
+                data[key] = party["product_differences_note"]
+    else:
+        data[document_availability_key] = "No, I do not have an end-user undertaking or stockist undertaking"
+        document_key_heading = "Explain why you do not have an end-user undertaking or stockist undertaking"
+        data[document_key_heading] = party["end_user_document_missing_reason"]
+
+    return data
+
+
 def convert_party(party, application, editable):
     if not party:
         return {}
@@ -429,19 +527,25 @@ def convert_party(party, application, editable):
         data["Role"] = party.get("role_other") if party.get("role_other") else party.get("role").get("value")
 
     if application["case_type"]["sub_type"]["key"] != OPEN:
-        if party.get("document"):
-            document_type = party["type"] if party["type"] != "end_user" else "end-user"
-            document = _convert_document(party, document_type, application["id"], editable)
+        if party["type"] == "end_user":
+            party_data = get_end_user_data(application, party, editable)
+            data = dict(data, **party_data)
         else:
-            document = convert_to_link(
-                reverse(
-                    f"applications:{party['type']}_attach_document",
-                    kwargs={"pk": application["id"], "obj_pk": party["id"]},
-                ),
-                "Attach document",
-            )
+            if party.get("document"):
+                party_type = party["type"]
+                if party["type"] == "third_party":
+                    party_type = "third-parties"
+                document = _convert_document(party, party_type, application["id"], editable)
+            else:
+                document = convert_to_link(
+                    reverse(
+                        f"applications:{party['type']}_attach_document",
+                        kwargs={"pk": application["id"], "obj_pk": party["id"]},
+                    ),
+                    "Attach document",
+                )
 
-        data["Document"] = document
+            data["Document"] = document
 
     if has_clearance:
         data["Clearance level"] = party["clearance_level"].get("value") if party["clearance_level"] else None
@@ -462,7 +566,10 @@ def _convert_goods_locations(goods_locations):
         return [{"Site": site["name"], "Address": get_address(site)} for site in goods_locations["data"]]
     else:
         return [
-            {"Name": external_location["name"], "Address": get_address(external_location),}
+            {
+                "Name": external_location["name"],
+                "Address": get_address(external_location),
+            }
             for external_location in goods_locations["data"]
         ]
 
@@ -480,6 +587,31 @@ def _get_supporting_documentation(supporting_documentation, application_id):
         }
         for document in supporting_documentation
     ]
+
+
+def _convert_end_user_document(application_id, party_id, document, editable):
+    if document["safe"] is None:
+        return "Processing"
+
+    if not document["safe"]:
+        return convert_to_link(
+            f"/applications/{application_id}/end-user/{party_id}/document/attach/", Parties.Documents.VIRUS
+        )
+
+    if editable:
+        return convert_to_link(
+            f"/applications/{application_id}/end-user/{party_id}/document/{document['id']}",
+            document["name"],
+            include_br=True,
+        ) + convert_to_link(
+            f"/applications/{application_id}/end-user/{party_id}/document/{document['id']}", Parties.Documents.DELETE
+        )
+    else:
+        return convert_to_link(
+            f"/applications/{application_id}/end-user/{party_id}/document/{document['id']}",
+            document["name"],
+            include_br=True,
+        )
 
 
 def _convert_document(party, document_type, application_id, editable):
@@ -580,3 +712,18 @@ def get_application_type_string(application):
         return applications.ApplicationPage.Summary.Licence.TRADE_CONTROL
     else:
         return APPLICATION_TYPE_STRINGS[application_type]
+
+
+def requires_serial_numbers(good_on_application):
+    firearm_details = good_on_application.get("firearm_details")
+    if not firearm_details:
+        return False
+
+    if firearm_details["serial_numbers_available"] == "NOT_AVAILABLE":
+        return False
+
+    serial_numbers = firearm_details["serial_numbers"]
+    added_serial_numbers = [sn for sn in serial_numbers if sn]
+    number_of_items = firearm_details["number_of_items"]
+
+    return number_of_items != len(added_serial_numbers)

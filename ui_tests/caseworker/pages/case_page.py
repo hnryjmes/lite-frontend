@@ -34,6 +34,7 @@ class CasePage(BasePage):
     LINK_ASSIGN_USERS_ID = "link-change-assigned-users"
     LINK_SET_NEXT_REVIEW_DATE_ID = "link-change-review-date"
     NEXT_REVIEW_DATE_ID = "next-review-date"
+    LINK_SELECT_ALL_GOODS_ID = "link-select-all-goods"
 
     BANNER_REFERENCE_CODE_ID = "reference-code"
 
@@ -60,6 +61,16 @@ class CasePage(BasePage):
         scroll_to_element_by_id(self.driver, self.LINK_ASSIGN_USERS_ID)
         self.driver.find_element_by_id(self.LINK_ASSIGN_USERS_ID).click()
 
+    def get_status(self):
+        return self.driver.find_element(
+            by=By.XPATH, value="//dd[preceding-sibling::dt[contains(text(), 'Status')]]"
+        ).text
+
+    def get_assigned_queues(self):
+        return self.driver.find_element(
+            by=By.XPATH, value="//dd[preceding-sibling::dt[contains(text(), 'Assigned queues')]]"
+        ).text
+
     def click_change_status(self):
         self.driver.find_element_by_id(self.LINK_CHANGE_STATUS_ID).click()
 
@@ -69,12 +80,33 @@ class CasePage(BasePage):
     def get_goods(self):
         return self.driver.find_elements_by_css_selector(f"#{self.TABLE_GOODS_ID} {Shared(self.driver).TABLE_ROW_CSS}")
 
+    def select_all_goods(self):
+        scroll_to_element_by_id(self.driver, self.TABLE_GOODS_ID)
+        self.driver.find_element(by=By.XPATH, value=f"//button[@id='{self.LINK_SELECT_ALL_GOODS_ID}']").click()
+
     def select_first_good(self):
         scroll_to_element_by_id(self.driver, self.TABLE_GOODS_ID)
         self.driver.find_element_by_css_selector(f"#{self.TABLE_GOODS_ID} {selectors.CHECKBOX}").click()
 
     def get_goods_text(self):
         return self.driver.find_element_by_id(self.TABLE_GOODS_ID).text
+
+    def get_goods_row_with_headers(self, row_num):
+        scroll_to_element_by_id(self.driver, self.TABLE_GOODS_ID)
+        headers = [
+            th.text
+            for th in self.driver.find_elements(
+                by=By.XPATH, value=f"//table[@id='{self.TABLE_GOODS_ID}']/thead/tr[1]/th"
+            )
+        ]
+        values = [
+            td.text
+            for td in self.driver.find_elements(
+                by=By.XPATH, value=f"//table[@id='{self.TABLE_GOODS_ID}']/tbody/tr[{row_num}]/td"
+            )
+        ]
+
+        return dict(zip(headers, values))
 
     def get_destinations(self):
         return self.driver.find_elements_by_css_selector(
