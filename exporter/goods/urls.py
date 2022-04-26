@@ -3,6 +3,24 @@ from django.urls import path
 
 from exporter.goods import views
 from exporter.goods.firearms.views.views import FirearmProductDetails
+from exporter.goods.firearms.views.edit import (
+    FirearmEditCategory,
+    FirearmEditName,
+    FirearmEditControlListEntry,
+    FirearmEditCalibre,
+    FirearmEditReplica,
+    FirearmEditPvGrading,
+    FirearmEditPVGradingDetails,
+    FirearmEditProductDocumentAvailability,
+    FirearmEditProductDocumentSensitivity,
+    FirearmEditProductDocumentView,
+    FirearmEditRegisteredFirearmsDealer,
+    FirearmEditSection5FirearmsAct1968,
+    FirearmEditFirearmCertificate,
+    FirearmEditShotgunCertificate,
+    FirearmEditLetterOfAuthority,
+    FirearmEditFirearmsAct1968,
+)
 
 app_name = "goods"
 urlpatterns = [
@@ -49,6 +67,82 @@ urlpatterns = [
     path("<uuid:pk>/documents/<uuid:file_pk>/delete/", views.DeleteDocument.as_view(), name="delete_document"),
     path("<uuid:pk>/attach/", views.AttachDocuments.as_view(), name="attach_documents"),
     path("<uuid:pk>/raise-good-query/", views.RaiseGoodsQuery.as_view(), name="raise_goods_query"),
+    path(
+        "<uuid:pk>/firearm/edit/category/",
+        FirearmEditCategory.as_view(),
+        name="firearm_edit_category",
+    ),
+    path("<uuid:pk>/firearm/edit/name/", FirearmEditName.as_view(), name="firearm_edit_name"),
+    path(
+        "<uuid:pk>/firearm/edit/control-list-entries/",
+        FirearmEditControlListEntry.as_view(),
+        name="firearm_edit_control_list_entries",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/calibre/",
+        FirearmEditCalibre.as_view(),
+        name="firearm_edit_calibre",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/replica/",
+        FirearmEditReplica.as_view(),
+        name="firearm_edit_replica",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/pv-grading/",
+        FirearmEditPvGrading.as_view(),
+        name="firearm_edit_pv_grading",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/pv-grading-details/",
+        FirearmEditPVGradingDetails.as_view(),
+        name="firearm_edit_pv_grading_details",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/product-document-availability/",
+        FirearmEditProductDocumentAvailability.as_view(),
+        name="firearm_edit_product_document_availability",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/product-document-sensitivity/",
+        FirearmEditProductDocumentSensitivity.as_view(),
+        name="firearm_edit_product_document_sensitivity",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/product-document/",
+        FirearmEditProductDocumentView.as_view(),
+        name="firearm_edit_product_document",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/registered-firearms-dealer/",
+        FirearmEditRegisteredFirearmsDealer.as_view(),
+        name="firearm_edit_registered_firearms_dealer",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/section-5-firearms-act-1968/",
+        FirearmEditSection5FirearmsAct1968.as_view(),
+        name="firearm_edit_section_5_firearms_act_1968",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/firearm-certificate/",
+        FirearmEditFirearmCertificate.as_view(),
+        name="firearm_edit_firearm_certificate",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/shotgun-certificate/",
+        FirearmEditShotgunCertificate.as_view(),
+        name="firearm_edit_shotgun_certificate",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/letter-of-authority/",
+        FirearmEditLetterOfAuthority.as_view(),
+        name="firearm_edit_letter_of_authority",
+    ),
+    path(
+        "<uuid:pk>/firearm/edit/firearms-act-1968/",
+        FirearmEditFirearmsAct1968.as_view(),
+        name="firearm_edit_firearms_act_1968",
+    ),
 ]
 
 if settings.FEATURE_FLAG_PRODUCT_2_0:
@@ -57,7 +151,7 @@ if settings.FEATURE_FLAG_PRODUCT_2_0:
     ]
 else:
     urlpatterns += [
-    path("<uuid:pk>/", views.GoodsDetailEmpty.as_view(), name="good"),
+        path("<uuid:pk>/", views.GoodsDetailEmpty.as_view(), name="good"),
         path("<uuid:pk>/<str:type>/", views.GoodsDetail.as_view(), name="good_detail"),
     ]
 

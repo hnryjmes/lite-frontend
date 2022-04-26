@@ -4,13 +4,18 @@ from django.utils.functional import cached_property
 from django.views.generic import TemplateView
 
 from core.auth.views import LoginRequiredMixin
+from exporter.core.helpers import (
+    get_user_organisation_documents,
+    has_valid_organisation_rfd_certificate,
+)
 from exporter.goods.services import (
     get_good,
     get_good_documents,
 )
+from .mixins import OrganisationMixin
 
 
-class FirearmProductDetails(LoginRequiredMixin, TemplateView):
+class FirearmProductDetails(LoginRequiredMixin, OrganisationMixin, TemplateView):
     template_name = "goods/product-details.html"
 
     @cached_property
@@ -30,15 +35,15 @@ class FirearmProductDetails(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         documents = get_good_documents(self.request, self.good_id)
-        # application = get_application(self.request, self.application_id)
-        # is_user_rfd = has_valid_organisation_rfd_certificate(application)
-        # organisation_documents = {k.replace("-", "_"): v for k, v in get_organisation_documents(application).items()}
+        is_user_rfd = has_valid_organisation_rfd_certificate(self.organisation)
+        organisation_documents = {
+            k.replace("-", "_"): v for k, v in get_user_organisation_documents(self.organisation).items()
+        }
 
         return {
             **context,
-            # "is_user_rfd": is_user_rfd,
-            # "application_id": self.application_id,
+            "is_user_rfd": is_user_rfd,
             "good": self.good,
             "documents": documents,
-            # "organisation_documents": organisation_documents,
+            "organisation_documents": organisation_documents,
         }
