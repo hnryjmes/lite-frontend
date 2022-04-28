@@ -98,6 +98,7 @@ logger = logging.getLogger(__name__)
 class BaseEditView(
     LoginRequiredMixin,
     Product2FlagMixin,
+    OrganisationMixin,
     GoodMixin,
     FormView,
 ):

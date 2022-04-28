@@ -1,9 +1,6 @@
 from http import HTTPStatus
 
-from exporter.applications.services import (
-    delete_additional_document,
-    post_application_document,
-)
+from exporter.applications.services import delete_additional_document
 from exporter.core.constants import DocumentType
 from exporter.core.forms import CurrentFile
 from exporter.core.helpers import (
