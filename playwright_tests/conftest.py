@@ -27,9 +27,10 @@ def browser_type_launch_args():
 
 
 @pytest.fixture(scope="session")
-def browser_context_args():
+def browser_context_args(pytestconfig):
+    base_url = pytestconfig.getoption("--base-url")
     context_args = {
-        "base_url": "https://internal.lite.service.devdata.uktrade.digital/",
+        "base_url": base_url,
         "record_video_dir": "./",
     }
     return context_args
@@ -129,6 +130,7 @@ def context(browser, browser_context_args, pytestconfig, request):
 @pytest.fixture
 def page(context):
     page = context.new_page()
+    page.set_extra_http_headers({"Authorization": f"Basic {os.getenv('VPN_BASIC_AUTH_TOKEN')}"})
     set_sso_cookie(page)
     yield page
 
@@ -188,4 +190,9 @@ def pytest_addoption(parser):
         default="off",
         choices=["on", "off", "only-on-failure"],
         help="Whether to automatically capture a screenshot after each test.",
+    )
+    group.addoption(
+        "--base-url",
+        default="http://localhost:8200/",
+        help="What should be the base url for all playwright http requests",
     )

@@ -1,3 +1,5 @@
+import datetime
+
 from dateutil.parser import parse
 from html import escape
 from typing import List
@@ -6,7 +8,6 @@ from django.conf import settings
 from django.template.defaultfilters import safe
 from django.templatetags.tz import localtime
 from django.utils.safestring import mark_safe
-from storages.backends.s3boto3 import S3Boto3Storage
 
 from exporter.core import decorators
 from exporter.core import constants
@@ -147,19 +148,6 @@ def get_firearms_subcategory(type):
     return is_firearm, is_firearm_ammunition_or_component, is_firearms_accessory, is_firearms_software_or_tech
 
 
-class NoSaveStorage(S3Boto3Storage):
-    def save(self, name, content, max_length=None):
-        # We don't actually need to save anything here as our file is already
-        # on S3.
-        return content.obj.key
-
-    def delete(self, name):
-        # We don't actually want to delete anything here as we'll be sending
-        # the key to the API that will pick this up so we want it to persist
-        # in the S3 bucket.
-        pass
-
-
 def is_category_firearms(wizard):
     product_category_cleaned_data = wizard.get_cleaned_data_for_step(AddGoodFormSteps.PRODUCT_CATEGORY)
     if not product_category_cleaned_data:
@@ -251,9 +239,13 @@ def has_valid_rfd_certificate(application):
     return bool(document) and not document["is_expired"]
 
 
+def get_organisation_documents(application):
+    return {item["document_type"]: item for item in application.get("organisation", {}).get("documents", [])}
+
+
 def get_rfd_certificate(application):
-    documents = {item["document_type"]: item for item in application.get("organisation", {}).get("documents", [])}
-    return documents.get("rfd-certificate")
+    documents = get_organisation_documents(application)
+    return documents.get(constants.DocumentType.RFD_CERTIFICATE)
 
 
 def is_end_user_document_available(wizard):
@@ -269,3 +261,33 @@ def is_document_in_english(wizard):
 def is_document_on_letterhead(wizard):
     cleaned_data = wizard.get_cleaned_data_for_step(SetPartyFormSteps.PARTY_DOCUMENT_UPLOAD)
     return str_to_bool(cleaned_data.get("document_on_letterhead"))
+
+
+def decompose_date(field_name, date):
+    return {
+        f"{field_name}_0": date.day,
+        f"{field_name}_1": date.month,
+        f"{field_name}_2": date.year,
+    }
+
+
+def get_document_data(file):
+    return {
+        "name": getattr(file, "original_name", file.name),
+        "s3_key": file.name,
+        "size": int(file.size // 1024) if file.size else 0,  # in kilobytes
+    }
+
+
+def has_firearm_act_document(application, document_type):
+    documents = get_organisation_documents(application)
+    return document_type in documents
+
+
+def get_firearm_act_document(application, document_type):
+    documents = get_organisation_documents(application)
+    return documents[document_type]
+
+
+def convert_api_date_string_to_date(date_str):
+    return datetime.datetime.strptime(date_str, "%d %B %Y").date()

@@ -23,11 +23,6 @@ def click_review_goods(driver):
     ApplicationPage(driver).click_review_goods()
 
 
-@then("I click on Notes and timeline")
-def click_on_notes_and_timeline(driver):
-    ApplicationPage(driver).click_on_notes_and_timeline()
-
-
 @then(parsers.parse('I add a case note "{case_note_text}" and click Post note'))
 def add_case_note(driver, case_note_text):
     ApplicationPage(driver).enter_case_note(case_note_text)
@@ -45,7 +40,7 @@ def input_clc_entry_during_review(driver, new_clc_entry):
     clear_clc_entry(driver)
 
     # input new entry
-    clc_input_element = driver.find_element_by_class_name("tokenfield-input")
+    clc_input_element = driver.find_element(by=By.CLASS_NAME, value="tokenfield-input")
     clc_input_element.send_keys(new_clc_entry)
     clc_input_element.click()
 
@@ -53,7 +48,7 @@ def input_clc_entry_during_review(driver, new_clc_entry):
 @when("I leave control list entry field blank")
 def clear_clc_entry(driver):
     # clear existing entries (click 'x' for each item which is a link)
-    for element in driver.find_elements_by_class_name("tokenfield-set-item"):
+    for element in driver.find_elements(by=By.CLASS_NAME, value="tokenfield-set-item"):
         remove_btn = element.find_element_by_xpath(".//a")
         remove_btn.click()
 
@@ -75,19 +70,9 @@ def select_licence_required(driver, option):
 
 @when(parsers.parse('I input "{summary}" as annual report summary'))
 def input_annual_report_summary(driver, summary):
-    summary_element = driver.find_element_by_id("report_summary")
+    summary_element = driver.find_element(by=By.ID, value="report_summary")
     summary_element.clear()
     summary_element.send_keys(summary)
-
-
-@then(parsers.parse('for the first good I see "{value}" for "{name}"'))
-def check_first_goods_row(driver, value, name):
-    assert value == CasePage(driver).get_goods_row_with_headers(row_num=1)[name]
-
-
-@then(parsers.parse('for the second good I see "{value}" for "{name}"'))
-def check_second_goods_row(driver, value, name):
-    assert value == CasePage(driver).get_goods_row_with_headers(row_num=2)[name]
 
 
 @then(parsers.parse('the product status is "{status}"'))

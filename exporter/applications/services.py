@@ -1,11 +1,10 @@
 from http import HTTPStatus
 
-from s3chunkuploader.file_handler import s3_client
-
 from django.http import StreamingHttpResponse
 from django.conf import settings
 
 from core import client
+from core.file_handler import s3_client
 from exporter.applications.helpers.date_fields import (
     format_date_fields,
     format_date,
@@ -129,6 +128,22 @@ def validate_good_on_application(request, pk, json):
 def get_application_goods_types(request, pk):
     data = client.get(request, f"/applications/{pk}/goodstypes/")
     return data.json().get("goods") if data.status_code == HTTPStatus.OK else None
+
+
+def post_firearm_good_on_application(request, pk, good_id, json):
+    # We have a default for `is_good_incorporated` however this may get overriden
+    # from the json blob depending on the question asked in the firearm wizard
+    # flow.
+    # This is essentially setting a default value in the case that we don't
+    # have an explicit value passed in from the json blob.
+    json = {
+        "good_id": good_id,
+        "is_good_incorporated": False,
+        **json,
+    }
+    response = client.post(request, f"/applications/{pk}/goods/", json)
+    response.raise_for_status()
+    return response.json(), response.status_code
 
 
 def post_good_on_application(request, pk, json):
@@ -279,7 +294,7 @@ def get_additional_document(request, pk, doc_pk):
     return data.json(), data.status_code
 
 
-def delete_additional_party_document(request, pk, doc_pk):
+def delete_additional_document(request, pk, doc_pk):
     data = client.delete(request, f"/applications/{pk}/documents/{doc_pk}/")
     return data.status_code
 
@@ -390,8 +405,7 @@ def generate_file(result):
 
 
 def download_document_from_s3(s3_key, original_file_name):
-    s3 = s3_client()
-    s3_response = s3.get_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
+    s3_response = s3_client().get_object(Bucket=settings.AWS_STORAGE_BUCKET_NAME, Key=s3_key)
     _kwargs = {}
     if s3_response.get("ContentType"):
         _kwargs["content_type"] = s3_response["ContentType"]

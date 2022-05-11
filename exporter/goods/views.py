@@ -8,7 +8,6 @@ from django.shortcuts import redirect, render
 from django.urls import reverse, reverse_lazy
 from django.utils.functional import cached_property
 from django.views.generic import FormView, TemplateView
-from formtools.wizard.views import SessionWizardView
 
 from core.auth.views import LoginRequiredMixin
 from core.constants import CaseStatusEnum
@@ -28,9 +27,8 @@ from exporter.applications.services import (
     post_case_notes,
 )
 from exporter.applications.views.goods import is_firearm_certificate_needed
-from exporter.core.constants import AddGoodFormSteps
+from exporter.core.constants import AddGoodFormSteps, FirearmsActDocumentType, FirearmsActSections
 from exporter.core.helpers import (
-    NoSaveStorage,
     has_valid_rfd_certificate,
     is_category_firearms,
     is_product_type,
@@ -40,6 +38,7 @@ from exporter.core.helpers import (
     str_to_bool,
 )
 from exporter.core.wizard.conditionals import C
+from exporter.core.wizard.views import BaseSessionWizardView
 from exporter.goods.forms import (
     AddGoodsQuestionsForm,
     AttachFirearmsDealerCertificateForm,
@@ -241,14 +240,10 @@ class GoodsDetail(LoginRequiredMixin, TemplateView):
         return redirect(reverse_lazy("goods:good_detail", kwargs={"pk": good_id, "type": "case-notes"}))
 
 
-class AddGood(LoginRequiredMixin, SessionWizardView):
+class AddGood(LoginRequiredMixin, BaseSessionWizardView):
     """This view manages the sequence of forms that are used add a new product
     to a user's product list.
     """
-
-    template_name = "core/form-wizard.html"
-
-    file_storage = NoSaveStorage()
 
     form_list = [
         (AddGoodFormSteps.PRODUCT_CATEGORY, ProductCategoryForm),
@@ -298,11 +293,9 @@ class AddGood(LoginRequiredMixin, SessionWizardView):
     def get_context_data(self, form, **kwargs):
         context = super().get_context_data(form, **kwargs)
         context["title"] = form.title
-        context["hide_step_count"] = True
         # The back_link_url is used for the first form in the sequence. For subsequent forms,
         # the wizard automatically generates the back link to the previous form.
         context["back_link_url"] = reverse("goods:goods")
-        context["back_link_text"] = "Back"
         return context
 
     def get_form_kwargs(self, step=None):
@@ -319,12 +312,6 @@ class AddGood(LoginRequiredMixin, SessionWizardView):
             kwargs["product_type"] = self.get_cleaned_data_for_step(AddGoodFormSteps.GROUP_TWO_PRODUCT_TYPE).get("type")
 
         return kwargs
-
-    def get_cleaned_data_for_step(self, step):
-        cleaned_data = super().get_cleaned_data_for_step(step)
-        if cleaned_data is None:
-            return {}
-        return cleaned_data
 
     def done(self, form_list, **kwargs):
         all_data = {k: v for form in form_list for k, v in form.cleaned_data.items()}
@@ -794,11 +781,11 @@ class EditFirearmActCertificateDetails(LoginRequiredMixin, SingleFormView):
         self.data = get_good_details(request, self.object_pk)[0]["firearm_details"]
 
         self.selected_section = "section"
-        if self.data["firearms_act_section"] == "firearms_act_section1":
+        if self.data["firearms_act_section"] == FirearmsActSections.SECTION_1:
             self.selected_section = "Section 1"
-        elif self.data["firearms_act_section"] == "firearms_act_section2":
+        elif self.data["firearms_act_section"] == FirearmsActSections.SECTION_2:
             self.selected_section = "Section 2"
-        elif self.data["firearms_act_section"] == "firearms_act_section5":
+        elif self.data["firearms_act_section"] == FirearmsActSections.SECTION_5:
             self.selected_section = "Section 5"
 
         self.certificate_filename = ""
@@ -867,9 +854,9 @@ class EditFirearmActCertificateDetails(LoginRequiredMixin, SingleFormView):
             fetch_and_delete_previous_application_documents(request, kwargs["pk"], kwargs["good_pk"])
 
             document_types = {
-                "Section 1": "section-one-certificate",
-                "Section 2": "section-two-certificate",
-                "Section 5": "section-five-certificate",
+                "Section 1": FirearmsActDocumentType.SECTION_1,
+                "Section 2": FirearmsActDocumentType.SECTION_2,
+                "Section 5": FirearmsActDocumentType.SECTION_5,
             }
 
             doc_data["document_on_organisation"] = {

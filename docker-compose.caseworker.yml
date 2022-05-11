@@ -4,6 +4,7 @@ services:
   caseworker:
     depends_on:
       - redis
+      - api
     build:
       context: .
       dockerfile: Dockerfile.e2e
@@ -17,6 +18,10 @@ services:
       PW_EXPORT_SSO_USER: ${PW_EXPORT_SSO_USER}
       PW_SSO_PASSWORD: ${PW_SSO_PASSWORD}
       PW_SSO_URL: ${PW_SSO_URL}
+      AWS_ACCESS_KEY_ID: ${PW_AWS_ACCESS_KEY_ID}
+      AWS_REGION: ${PW_AWS_REGION}
+      AWS_SECRET_ACCESS_KEY: ${PW_AWS_SECRET_ACCESS_KEY}
+      AWS_STORAGE_BUCKET_NAME: ${PW_AWS_STORAGE_BUCKET_NAME}
     env_file:
       - ./caseworker.env
     ports:
@@ -26,13 +31,8 @@ services:
     entrypoint: ["/bin/sh","-c"]
     command:
     - |
-       npm run build_caseworker
-       ./manage.py runserver 0.0.0.0:${PORT:-8200}
+      dockerize -wait tcp://api:8100 -timeout 5m
+      npm run build_caseworker
+      ./manage.py runserver 0.0.0.0:${PORT:-8200}
     stdin_open: true
     tty: true
-
-  redis:
-    image: "redis:5-alpine"
-    container_name: redis
-    ports:
-      - 6379:6379

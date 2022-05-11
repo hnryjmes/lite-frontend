@@ -8,7 +8,6 @@ from django.urls import reverse, reverse_lazy
 from django.utils.functional import cached_property
 from django.views.generic import TemplateView
 from formtools.wizard.storage.session import SessionStorage
-from formtools.wizard.views import SessionWizardView
 
 from core.auth.views import LoginRequiredMixin
 from core.helpers import convert_dict_to_query_params
@@ -31,7 +30,6 @@ from exporter.applications.services import (
 from exporter.core import constants
 from exporter.core.constants import AddGoodFormSteps
 from exporter.core.helpers import (
-    NoSaveStorage,
     has_valid_rfd_certificate,
     is_category_firearms,
     is_draft,
@@ -45,6 +43,7 @@ from exporter.core.helpers import (
 )
 from exporter.core.validators import validate_expiry_date
 from exporter.core.wizard.conditionals import C, Flag
+from exporter.core.wizard.views import BaseSessionWizardView
 from exporter.goods.forms import (
     AddGoodsQuestionsForm,
     AttachFirearmsDealerCertificateForm,
@@ -106,12 +105,12 @@ class SectionDocumentMixin:
             good_firearms_details_act_section = good_firearms_details.get("firearms_act_section")
 
         firearm_section = self.request.POST.get("firearms_act_section") or good_firearms_details_act_section
-        if firearm_section == "firearms_act_section1":
-            return documents["section-one-certificate"]
-        elif firearm_section == "firearms_act_section2":
-            return documents["section-two-certificate"]
-        elif firearm_section == "firearms_act_section5":
-            return documents["section-five-certificate"]
+        if firearm_section == constants.FirearmsActSections.SECTION_1:
+            return documents[constants.FirearmsActDocumentType.SECTION_1]
+        elif firearm_section == constants.FirearmsActSections.SECTION_2:
+            return documents[constants.FirearmsActDocumentType.SECTION_2]
+        elif firearm_section == constants.FirearmsActSections.SECTION_5:
+            return documents[constants.FirearmsActDocumentType.SECTION_5]
 
 
 class ApplicationGoodsList(LoginRequiredMixin, TemplateView):
@@ -195,7 +194,7 @@ class RegisteredFirearmDealersMixin:
             "document_on_organisation": {
                 "expiry_date": format_date(self.request.POST, "expiry_date_"),
                 "reference_code": self.request.POST["reference_code"],
-                "document_type": "rfd-certificate",
+                "document_type": constants.DocumentType.RFD_CERTIFICATE,
             },
         }
 
@@ -227,14 +226,10 @@ class SkipResetSessionStorage(SessionStorage):
             super().reset()
 
 
-class AddGood(LoginRequiredMixin, SessionWizardView):
+class AddGood(LoginRequiredMixin, BaseSessionWizardView):
     """This view manages the sequence of forms that are used add a new product
     to an existing application.
     """
-
-    template_name = "core/form-wizard.html"
-
-    file_storage = NoSaveStorage()
 
     storage_name = "exporter.applications.views.goods.SkipResetSessionStorage"
 
@@ -304,11 +299,9 @@ class AddGood(LoginRequiredMixin, SessionWizardView):
     def get_context_data(self, form, **kwargs):
         context = super().get_context_data(form, **kwargs)
         context["title"] = form.title
-        context["hide_step_count"] = True
         # The back_link_url is used for the first form in the sequence. For subsequent forms,
         # the wizard automatically generates the back link to the previous form.
         context["back_link_url"] = reverse("applications:goods", kwargs={"pk": self.kwargs["pk"]})
-        context["back_link_text"] = "Back"
         return context
 
     def get_form_kwargs(self, step=None):
@@ -339,11 +332,11 @@ class AddGood(LoginRequiredMixin, SessionWizardView):
 
         return kwargs
 
-    def get_cleaned_data_for_step(self, step):
-        cleaned_data = super().get_cleaned_data_for_step(step)
-        if cleaned_data is None:
-            return {}
-        return cleaned_data
+    def render_next_step(self, form, **kwargs):
+        if settings.FEATURE_FLAG_PRODUCT_2_0 and self.steps.current == AddGoodFormSteps.GROUP_TWO_PRODUCT_TYPE:
+            if form.cleaned_data["type"] == "firearms":
+                return redirect("applications:new_good_firearm", pk=self.kwargs["pk"])
+        return super().render_next_step(form, **kwargs)
 
     def done(self, form_list, **kwargs):
         all_data = {k: v for form in form_list for k, v in form.cleaned_data.items()}
@@ -377,7 +370,7 @@ class AddGood(LoginRequiredMixin, SessionWizardView):
                 "document_on_organisation": {
                     "expiry_date": format_date(all_data, "expiry_date_"),
                     "reference_code": all_data["reference_code"],
-                    "document_type": "rfd-certificate",
+                    "document_type": constants.DocumentType.RFD_CERTIFICATE,
                 },
             }
 
@@ -426,11 +419,11 @@ class AttachFirearmActSectionDocument(LoginRequiredMixin, TemplateView):
         self.certificate_filename = ""
         post_data = request.session[self.firearms_data_id]
 
-        if post_data["firearms_act_section"] == "firearms_act_section1":
+        if post_data["firearms_act_section"] == constants.FirearmsActSections.SECTION_1:
             self.selected_section = "Section 1"
-        elif post_data["firearms_act_section"] == "firearms_act_section2":
+        elif post_data["firearms_act_section"] == constants.FirearmsActSections.SECTION_2:
             self.selected_section = "Section 2"
-        elif post_data["firearms_act_section"] == "firearms_act_section5":
+        elif post_data["firearms_act_section"] == constants.FirearmsActSections.SECTION_5:
             self.selected_section = "Section 5"
 
         return super().dispatch(request, **kwargs)
@@ -475,6 +468,14 @@ class AttachFirearmActSectionDocument(LoginRequiredMixin, TemplateView):
             form_data=old_post,
         )
 
+        if not request.FILES.get("file"):
+            form = upload_firearms_act_certificate_form(
+                section="section",
+                filename=self.certificate_filename,
+                back_link=back_link,
+            )
+            return form_page(request, form, data=data, errors={"file": ["Select certificate file to upload"]})
+
         errors = validate_expiry_date(request, "section_certificate_date_of_expiry")
         if errors:
             form = upload_firearms_act_certificate_form(
@@ -517,9 +518,9 @@ class AttachFirearmActSectionDocument(LoginRequiredMixin, TemplateView):
 
         if certificate_available and new_file_selected:
             document_types = {
-                "Section 1": "section-one-certificate",
-                "Section 2": "section-two-certificate",
-                "Section 5": "section-five-certificate",
+                "Section 1": constants.FirearmsActDocumentType.SECTION_1,
+                "Section 2": constants.FirearmsActDocumentType.SECTION_2,
+                "Section 5": constants.FirearmsActDocumentType.SECTION_5,
             }
             doc_data["document_on_organisation"] = {
                 "expiry_date": format_date(request.POST, "section_certificate_date_of_expiry"),
@@ -681,11 +682,7 @@ def is_firearm_type_not_in(firearm_types):
     return _is_firearm_type_not_in
 
 
-class AddGoodToApplication(SectionDocumentMixin, LoginRequiredMixin, SessionWizardView):
-    template_name = "core/form-wizard.html"
-
-    file_storage = NoSaveStorage()
-
+class AddGoodToApplication(SectionDocumentMixin, LoginRequiredMixin, BaseSessionWizardView):
     storage_name = "exporter.applications.views.goods.SkipResetSessionStorage"
 
     form_list = [
@@ -764,17 +761,10 @@ class AddGoodToApplication(SectionDocumentMixin, LoginRequiredMixin, SessionWiza
     def get_context_data(self, form, **kwargs):
         context = super().get_context_data(form, **kwargs)
         context["title"] = form.title
-        context["hide_step_count"] = True
         # The back_link_url is used for the first form in the sequence. For subsequent forms,
         # the wizard automatically generates the back link to the previous form.
         context["back_link_url"] = reverse_lazy("applications:preexisting_good", kwargs={"pk": self.kwargs["pk"]})
         return context
-
-    def get_cleaned_data_for_step(self, step):
-        cleaned_data = super().get_cleaned_data_for_step(step)
-        if cleaned_data is None:
-            return {}
-        return cleaned_data
 
     def get_form_kwargs(self, step=None):
         kwargs = super().get_form_kwargs(step)
@@ -791,6 +781,20 @@ class AddGoodToApplication(SectionDocumentMixin, LoginRequiredMixin, SessionWiza
             AddGoodToApplicationFormSteps.UNIT_QUANTITY_VALUE,
         ):
             kwargs["good"] = self.good
+
+            # The number of items can be derived from two different places.
+            # Either because it has been set explicitly by the user as part of
+            # a previous step within this wizard flow or from a previously saved
+            # good.
+            # We always try to default to default to whatever the user input on
+            # this wizard, if not we defer back to the saved good and then
+            # eventually if neither return we return a sensible default.
+            kwargs["number_of_items"] = self.get_cleaned_data_for_step(
+                AddGoodToApplicationFormSteps.FIREARMS_NUMBER_OF_ITEMS
+            ).get(
+                "number_of_items",
+                self.good["firearm_details"].get("number_of_items", 0),
+            )
 
         if step == AddGoodToApplicationFormSteps.UNIT_QUANTITY_VALUE:
             kwargs["request"] = self.request
@@ -849,12 +853,12 @@ class AddGoodToApplication(SectionDocumentMixin, LoginRequiredMixin, SessionWiza
             good_firearms_details_act_section = good_firearms_details.get("firearms_act_section")
 
         firearm_section = all_data.get("firearms_act_section") or good_firearms_details_act_section
-        if firearm_section == "firearms_act_section1":
-            return documents["section-one-certificate"]
-        elif firearm_section == "firearms_act_section2":
-            return documents["section-two-certificate"]
-        elif firearm_section == "firearms_act_section5":
-            return documents["section-five-certificate"]
+        if firearm_section == constants.FirearmsActSections.SECTION_1:
+            return documents[constants.FirearmsActDocumentType.SECTION_1]
+        elif firearm_section == constants.FirearmsActSections.SECTION_2:
+            return documents[constants.FirearmsActDocumentType.SECTION_2]
+        elif firearm_section == constants.FirearmsActSections.SECTION_5:
+            return documents[constants.FirearmsActDocumentType.SECTION_5]
 
     def done(self, form_list, **kwargs):
         all_data = self.get_good_on_application_data(form_list)
@@ -868,7 +872,7 @@ class AddGoodToApplication(SectionDocumentMixin, LoginRequiredMixin, SessionWiza
                 "document_on_organisation": {
                     "expiry_date": format_date(all_data, "expiry_date_"),
                     "reference_code": all_data["reference_code"],
-                    "document_type": "rfd-certificate",
+                    "document_type": constants.DocumentType.RFD_CERTIFICATE,
                 },
             }
 
@@ -1011,7 +1015,7 @@ class AddGoodsSummary(LoginRequiredMixin, SectionDocumentMixin, TemplateView):
 
 
 def is_firearm_certificate_needed(application, selected_section):
-    firearm_sections = ["firearms_act_section1", "firearms_act_section2"]
+    firearm_sections = [constants.FirearmsActSections.SECTION_1, constants.FirearmsActSections.SECTION_2]
     if not has_valid_section_five_certificate(application):
         firearm_sections.append("firearms_act_section5")
     return selected_section in firearm_sections

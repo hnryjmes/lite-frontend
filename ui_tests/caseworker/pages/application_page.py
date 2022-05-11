@@ -61,6 +61,7 @@ class ApplicationPage(BasePage):
     NEXT_REVIEW_DATE_DAY_ID = "next_review_dateday"
     NEXT_REVIEW_DATE_MONTH_ID = "next_review_datemonth"
     NEXT_REVIEW_DATE_YEAR_ID = "next_review_dateyear"
+    COUNTERSIGN_NOTE_ID = "note"
 
     def get_case_copy_of_field_href(self):
         return self.driver.find_element_by_id(self.CASE_COPY_OF_ID).get_attribute("href")
@@ -72,7 +73,10 @@ class ApplicationPage(BasePage):
 
     def enter_case_note(self, text):
         self.driver.execute_script(f'document.getElementById("{self.INPUT_CASE_NOTE_ID}").value = "{text[:-1]}"')
-        self.driver.find_element_by_id(self.INPUT_CASE_NOTE_ID).send_keys(text[-1:])
+        self.driver.find_element(by=By.ID, value=self.INPUT_CASE_NOTE_ID).send_keys(text[-1:])
+
+    def enter_countersign_note(self, text):
+        self.driver.find_element(by=By.ID, value=self.COUNTERSIGN_NOTE_ID).send_keys(text)
 
     def set_next_review_date(self, day, month, year, context):
         self.driver.find_element_by_id(self.NEXT_REVIEW_DATE_DAY_ID).clear()
@@ -92,7 +96,7 @@ class ApplicationPage(BasePage):
             expected_conditions.presence_of_element_located((By.ID, self.BUTTON_POST_NOTE_ID))
         )
 
-        self.driver.find_element_by_id(self.BUTTON_POST_NOTE_ID).click()
+        self.driver.find_element(by=By.ID, value=self.BUTTON_POST_NOTE_ID).click()
 
     def click_cancel_btn(self):
         WebDriverWait(self.driver, 30).until(
@@ -100,10 +104,10 @@ class ApplicationPage(BasePage):
         ).click()
 
     def get_text_of_case_note(self, no):
-        return self.driver.find_elements_by_css_selector(self.CASE_NOTES_TEXT)[no].text
+        return self.driver.find_elements(by=By.CSS_SELECTOR, value=self.CASE_NOTES_TEXT)[no].text
 
     def get_text_of_case_note_date_time(self, no):
-        return self.driver.find_elements_by_css_selector(self.CASE_NOTE_DATE_TIME)[no].text
+        return self.driver.find_elements(by=By.CSS_SELECTOR, value=self.CASE_NOTE_DATE_TIME)[no].text
 
     def click_progress_application(self):
         scroll_to_element_by_id(self.driver, self.PROGRESS_APP_BTN)
@@ -130,10 +134,10 @@ class ApplicationPage(BasePage):
         return self.driver.find_elements_by_css_selector(self.ACTIVITY_DATES)[no].text
 
     def click_review_goods(self):
-        self.driver.find_element_by_id(self.BUTTON_REVIEW_GOODS_ID).click()
+        self.driver.find_element(by=By.ID, value=self.BUTTON_REVIEW_GOODS_ID).click()
 
     def click_on_notes_and_timeline(self):
-        self.driver.find_element_by_id(self.CASE_NOTES_AND_ACTIVITY_TAB).click()
+        self.driver.find_element(by=By.ID, value=self.CASE_NOTES_AND_ACTIVITY_TAB).click()
 
     def click_edit_good_flags(self):
         edit_goods_btn = self.driver.find_element_by_id(self.EDIT_GOODS_FLAGS)
@@ -242,7 +246,9 @@ class ApplicationPage(BasePage):
         self.driver.find_element_by_id(self.ASSIGN_USER_ID).click()
 
     def click_im_done_button(self):
-        self.driver.find_element_by_id(self.BUTTON_IM_DONE_ID).click()
+        WebDriverWait(self.driver, 30).until(
+            expected_conditions.presence_of_element_located((By.ID, self.BUTTON_IM_DONE_ID))
+        ).click()
 
     def click_on_case_link(self, case_id):
         self.driver.find_element_by_id(self.CASE_LINK_PARTIAL_ID + case_id).click()
@@ -293,3 +299,30 @@ class ApplicationPage(BasePage):
             + context.eua_id
             + "/activity/"
         )
+
+    def select_end_user(self, end_user_name):
+        self.driver.find_element(
+            by=By.XPATH,
+            value=f"//input[@type='checkbox' and @name='end_user' and ancestor::tr/td/text()[contains(., '{end_user_name}')]]",
+        ).click()
+
+    def get_matches(self, match_type):
+        """Return a list of names that have denial matches based on
+        the supplied match_type - one of "PARTIAL MATCH" or "EXACT MATCH".
+        """
+        table = WebDriverWait(self.driver, 30).until(
+            expected_conditions.presence_of_element_located((By.XPATH, "//table[@id='table-denial-matches']"))
+        )
+
+        return [
+            td.text
+            for td in table.find_elements(
+                by=By.XPATH, value=f"tbody/tr/td[3][contains(preceding-sibling::td/strong/text(), '{match_type}')]"
+            )
+        ]
+
+    def select_denial_match(self, name):
+        return self.driver.find_element(
+            by=By.XPATH,
+            value=f"//input[@type='checkbox' and ancestor::table[@id='table-denial-matches']/tbody/tr/td[3][contains(text(), '{name}')]]",
+        ).click()

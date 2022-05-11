@@ -5,7 +5,6 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.functional import cached_property
 from django.views.generic import TemplateView, FormView
-from formtools.wizard.views import SessionWizardView
 from http import HTTPStatus
 
 from exporter.applications.forms.parties import (
@@ -42,12 +41,12 @@ from exporter.core.constants import (
     DOCUMENT_TYPE_PARAM_COMPANY_LETTERHEAD,
 )
 from exporter.core.helpers import (
-    NoSaveStorage,
     is_end_user_document_available,
     is_document_in_english,
     is_document_on_letterhead,
     str_to_bool,
 )
+from exporter.core.wizard.views import BaseSessionWizardView
 from lite_forms.generators import error_page
 
 from core.auth.views import LoginRequiredMixin
@@ -105,11 +104,7 @@ def _post_party_document(request, application_id, party_id, document_type, docum
     return response, status_code
 
 
-class SetPartyView(LoginRequiredMixin, SessionWizardView):
-    template_name = "core/form-wizard.html"
-
-    file_storage = NoSaveStorage()
-
+class SetPartyView(LoginRequiredMixin, BaseSessionWizardView):
     form_list = [
         (SetPartyFormSteps.PARTY_SUB_TYPE, PartySubTypeSelectForm),
         (SetPartyFormSteps.PARTY_NAME, PartyNameForm),
@@ -136,17 +131,9 @@ class SetPartyView(LoginRequiredMixin, SessionWizardView):
     def application(self):
         return get_application(self.request, self.kwargs["pk"])
 
-    def get_cleaned_data_for_step(self, step):
-        cleaned_data = super().get_cleaned_data_for_step(step)
-        if cleaned_data is None:
-            return {}
-        return cleaned_data
-
     def get_context_data(self, form, **kwargs):
         context = super().get_context_data(form, **kwargs)
         context["title"] = form.title
-        context["hide_step_count"] = True
-        context["back_link_text"] = "Back"
         return context
 
     def get_form_kwargs(self, step=None):
@@ -252,6 +239,10 @@ class PartyContextMixin:
     def party_id(self):
         return str(self.kwargs["obj_pk"])
 
+    @cached_property
+    def application(self):
+        return get_application(self.request, self.kwargs["pk"])
+
     @property
     def party(self):
         party = get_party(self.request, self.kwargs["pk"], self.kwargs["obj_pk"])
@@ -267,6 +258,7 @@ class PartySummaryView(LoginRequiredMixin, PartyContextMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        context["ec3_required"] = party_requires_ec3_document(self.application)
         available_documents = {document["type"]: document for document in self.party["documents"]}
         return {**context, **available_documents}
 
@@ -370,10 +362,8 @@ class PartyDocumentOptionEditView(PartyEditView):
             return reverse("applications:end_user_summary", kwargs=self.kwargs)
 
 
-class PartyUndertakingDocumentEditView(LoginRequiredMixin, PartyContextMixin, SessionWizardView):
+class PartyUndertakingDocumentEditView(LoginRequiredMixin, PartyContextMixin, BaseSessionWizardView):
     template_name = "core/form-wizard.html"
-    file_storage = NoSaveStorage()
-
     form_list = [
         (SetPartyFormSteps.PARTY_DOCUMENT_UPLOAD, PartyDocumentUploadForm),
         (SetPartyFormSteps.PARTY_ENGLISH_TRANSLATION_UPLOAD, PartyEnglishTranslationDocumentUploadForm),
@@ -425,11 +415,9 @@ class PartyUndertakingDocumentEditView(LoginRequiredMixin, PartyContextMixin, Se
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["hide_step_count"] = True
         # The back_link_url is used for the first form in the sequence. For subsequent forms,
         # the wizard automatically generates the back link to the previous form.
         context["back_link_url"] = reverse("applications:end_user_summary", kwargs=self.kwargs)
-        context["back_link_text"] = "Back"
         return context
 
     def get_cleaned_data_for_step(self, step):

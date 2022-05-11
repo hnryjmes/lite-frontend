@@ -1,11 +1,12 @@
 from datetime import date
 
+from selenium.webdriver.common.by import By
+
 import tests_common.tools.helpers as utils
 from ui_tests.caseworker.pages.application_page import ApplicationPage
 from ui_tests.caseworker.pages.case_list_page import CaseListPage
 from ui_tests.caseworker.pages.case_page import CasePage
 from pytest_bdd import then, scenarios, when, given, parsers
-from tests_common import functions
 
 scenarios("../features/view_standard_application.feature", strict_gherkin=False)
 
@@ -42,15 +43,6 @@ def i_can_see_the_case_on_the_exporter_amendments_queue(driver, context):
 @then("I see that changes have been made to the case")
 def changes_have_been_made_to_case(driver, context, api_test_client):
     assert len(ApplicationPage(driver).get_case_notification_anchor())
-
-
-@then("I see the application destinations")
-def i_see_destinations(driver, context):
-    destinations = [context.consignee, context.end_user, context.third_party, context.ultimate_end_user]
-    destinations_table_text = CasePage(driver).get_destinations_text()
-
-    for destination in destinations:
-        assert destination["name"] in destinations_table_text
 
 
 @then("I should see the view link displayed against a good")  # noqa
@@ -95,7 +87,7 @@ def filter_by_application_type(driver, end_use_expected):
 
 @then("I should see a link to download the document")
 def i_see_link_to_download_document(driver):
-    docs = driver.find_elements_by_class_name("app-documents__item")
+    docs = driver.find_elements(by=By.CLASS_NAME, value="app-documents__item")
     assert len(docs) == 1
     link = docs[0].find_element_by_class_name("app-documents__item-details")
     assert link.text.startswith(f"Application Form - {date.today().isoformat()}")

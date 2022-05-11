@@ -457,7 +457,7 @@ def test_add_goods_questions_form(rf, client, data, application_pk, valid, error
         ),
     ),
 )
-@patch("exporter.goods.forms.get_pv_gradings")
+@patch("exporter.goods.forms.goods.get_pv_gradings")
 def test_pv_details_form(mock_get_pv_gradings, data, valid, error_field, error_message):
     mock_get_pv_gradings.return_value = [{"key1": "display1"}, {"key2": "display2"}]
 
@@ -868,7 +868,7 @@ def test_firearms_unit_quantity_value_form(data, valid, errors):
         },
     }
 
-    form = forms.FirearmsUnitQuantityValueForm(data=data, good=good)
+    form = forms.FirearmsUnitQuantityValueForm(data=data, good=good, number_of_items=5)
 
     assert form.is_valid() == valid
 
@@ -1010,7 +1010,7 @@ def test_component_of_a_firearm_unit_quantity_value_form(data, valid, errors):
         },
     }
 
-    form = forms.ComponentOfAFirearmUnitQuantityValueForm(data=data, good=good)
+    form = forms.ComponentOfAFirearmUnitQuantityValueForm(data=data, good=good, number_of_items=5)
 
     assert form.is_valid() == valid
 
@@ -1116,7 +1116,7 @@ def test_component_of_a_firearm_ammunition_unit_quantity_value_form(data, valid,
         },
     }
 
-    form = forms.ComponentOfAFirearmAmmunitionUnitQuantityValueForm(data=data, good=good)
+    form = forms.ComponentOfAFirearmAmmunitionUnitQuantityValueForm(data=data, good=good, number_of_items=5)
 
     assert form.is_valid() == valid
 
@@ -1162,7 +1162,7 @@ def test_unit_quantity_value_form(rf, client, mock_units, data, valid, errors):
 
     request = post_request(rf, client)
 
-    form = forms.UnitQuantityValueForm(data=data, good=good, request=request)
+    form = forms.UnitQuantityValueForm(data=data, good=good, number_of_items=5, request=request)
     assert form.fields["unit"].choices == [
         ("", "Select"),
         ("GRM", "Gram(s)"),

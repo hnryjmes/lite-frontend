@@ -36,13 +36,23 @@ class ApplicationPage(BasePage):
     def click_copy_application(self):
         self.driver.find_element_by_id(self.BUTTON_COPY_APPLICATION_ID).click()
 
+    def notes_notification_count(self):
+        return (
+            self.driver.find_element(by=By.ID, value=self.LINK_NOTES_TAB_ID)
+            .find_element(by=By.CSS_SELECTOR, value=Shared.NOTIFICATION)
+            .text.strip()
+        )
+
+    def get_text_of_case_note(self, no):
+        return self.driver.find_elements(by=By.CLASS_NAME, value="lite-application-note")[no].text
+
     def click_ecju_query_tab(self):
         self.driver.find_element(by=By.ID, value=self.LINK_ECJU_QUERY_TAB_ID).click()
 
     def ecju_query_notification_count(self):
         return (
             self.driver.find_element(by=By.ID, value=self.LINK_ECJU_QUERY_TAB_ID)
-            .find_element_by_css_selector(Shared.NOTIFICATION)
+            .find_element(by=By.CSS_SELECTOR, value=Shared.NOTIFICATION)
             .text.strip()
         )
 
@@ -70,7 +80,7 @@ class ApplicationPage(BasePage):
 
     def respond_to_ecju_query(self, no):
         response = '//a[contains(text(), "' + self.ECJU_QUERY_RESPONSE_TEXT + '")]'
-        self.driver.find_elements_by_xpath(response)[no].click()
+        self.driver.find_elements(by=By.XPATH, value=response)[no].click()
 
     def find_edit_application_button(self):
         return self.driver.find_elements_by_id(self.BUTTON_EDIT_APPLICATION_ID)

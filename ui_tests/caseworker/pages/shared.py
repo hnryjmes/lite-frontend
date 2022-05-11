@@ -1,5 +1,3 @@
-import time
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
@@ -30,15 +28,16 @@ class Shared(BasePage):
     CASES_FORM_ID = "form-cases"
     FIRST_LINK_IN_ROW = ".govuk-table__row .govuk-link"
     GOVUK_HEADING = ".govuk-heading-xl"
+    GOVUK_DETAILS = "govuk-details__summary-text"
 
     def click_submit(self):
-        self.driver.find_element_by_css_selector(self.SUBMIT_BUTTON).click()
+        self.driver.find_element(by=By.CSS_SELECTOR, value=self.SUBMIT_BUTTON).click()
 
     def get_text_of_error_message(self, no):
         return self.driver.find_elements_by_css_selector(self.ERROR_MESSAGE)[no].text
 
     def get_text_of_body(self):
-        return self.driver.find_element_by_css_selector(self.BODY).text
+        return self.driver.find_element(by=By.CSS_SELECTOR, value=self.BODY).text
 
     def get_text_of_caption(self):
         return self.driver.find_element_by_css_selector(self.GOVUK_CAPTION).text
@@ -99,7 +98,7 @@ class Shared(BasePage):
         self.driver.execute_script("document.getElementById('app-header').style.position = 'relative';")
 
     def get_audit_trail_text(self):
-        return self.driver.find_element_by_id(self.AUDIT_TRAIL_ID).text
+        return self.driver.find_element(by=By.ID, value=self.AUDIT_TRAIL_ID).text
 
     def go_to_last_page(self):
         self.driver.implicitly_wait(0)
@@ -117,12 +116,18 @@ class Shared(BasePage):
     def click_first_link_in_row(self):
         self.driver.find_element_by_css_selector(self.FIRST_LINK_IN_ROW).click()
 
+    def expand_govuk_details(self):
+        self.driver.find_element(by=By.CLASS_NAME, value=self.GOVUK_DETAILS).click()
+        WebDriverWait(self.driver, 30).until(
+            expected_conditions.presence_of_element_located(
+                (By.XPATH, f"//*[contains(@class, '{self.GOVUK_DETAILS}') and ancestor::details/@open]")
+            )
+        )
+
     def try_open_filters(self):
         WebDriverWait(self.driver, 30).until(
             expected_conditions.presence_of_element_located((By.CLASS_NAME, "lite-filter-bar"))
         )
 
-        if not self.driver.find_element_by_class_name("lite-filter-bar").is_displayed():
-            self.driver.find_element_by_id("show-filters-link").click()
-            # Delay is necessary as driver can fail to click filters
-            time.sleep(0.5)
+        if not self.driver.find_element(by=By.CLASS_NAME, value="lite-filter-bar").is_displayed():
+            self.driver.find_element(by=By.ID, value="show-filters-link").click()

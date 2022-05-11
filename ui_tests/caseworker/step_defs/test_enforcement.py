@@ -1,4 +1,6 @@
 import os
+import time
+
 from pytest_bdd import when, scenarios, then, parsers
 import xml.etree.ElementTree as ET
 
@@ -30,6 +32,17 @@ def enforcement_file_download_check(filename):
     assert filename in os.listdir("/tmp")
 
 
+@then("an XML file is downloaded onto my device")
+def xml_file_downloaded(driver):
+    i = 10
+    EU_XML_PATH = "/tmp/enforcement_check.xml"
+    while not os.path.exists(EU_XML_PATH) and i > 0:
+        time.sleep(0.1)
+        i -= 1
+
+    assert os.path.exists(EU_XML_PATH)
+
+
 @then(parsers.parse('the downloaded file should include "{party_type}" "{tag}" as "{value}"'))
 def enforcement_file_content_check(party_type, tag, value):
     tree = ET.parse("/tmp/enforcement_check.xml")
@@ -37,11 +50,11 @@ def enforcement_file_content_check(party_type, tag, value):
 
     # get values of all party_types as the file can contain multiple entries
     nodes = root.findall(f".//STAKEHOLDER[SH_TYPE='{party_type}']")
-    party_values = set([child.text for node in nodes for child in node.getchildren() if child.tag == tag])
+    party_values = set([child.text for node in nodes for child in node if child.tag == tag])
     assert value in party_values
 
 
-@when(parsers.parse('I include "{party_type}" details to generate import file'))
+@when(parsers.parse('I include "{party_type}" details and generate import file'))
 def generate_enforcement_check_import_file(party_type):
     tree = ET.parse("/tmp/enforcement_check.xml")
     root = tree.getroot()
@@ -73,19 +86,55 @@ def generate_enforcement_check_import_file(party_type):
         f.write(import_xml_string)
 
 
-@when("I import the generated enforcement check xml file")
-def i_import_generated_enforcement_check_xml_file(driver):  # noqa
-    driver.find_element_by_id("button-import-xml").click()
-    file_input = driver.find_element_by_name("file")
+@then(parsers.parse('for FLAG the file has "{flag_value}"'))
+def enforcement_file_content_check(flag_value):
+    tree = ET.parse("/tmp/enforcement_check_import.xml")
+    root = tree.getroot()
+
+    # get values of all party_types as the file can contain multiple entries
+    for node in root.findall(f".//SPIRE_RETURNS/FLAG"):
+        assert node.text == flag_value
+
+
+@then(parsers.parse('for "{import_tag}" the file has the "{party_type}" data "{export_tag}" number from export file'))
+def compare_import_tags_with_export_tags(import_tag, party_type, export_tag):
+    # Extract ELA_ID, SH_ID from the export xml file for given party
+    tree = ET.parse("/tmp/enforcement_check.xml")
+    root = tree.getroot()
+
+    data = []
+    for node in root.findall(f".//STAKEHOLDER[SH_TYPE='{party_type}']"):
+        data.append(
+            {
+                f"{export_tag}": node.find(f".//{export_tag}").text,
+            }
+        )
+
+    tree = ET.parse("/tmp/enforcement_check_import.xml")
+    root = tree.getroot()
+
+    # compare the values in the file to be imported for the given party
+    for index, node in enumerate(root.findall(f".//SPIRE_RETURNS/{import_tag}")):
+        assert node.text == data[index][export_tag]
+
+
+@when(parsers.parse('I click on "{import_eu_btn_text}"'))
+def import_enforcement_xml(driver, import_eu_btn_text):
+    CaseListPage(driver).click_by_link_text(import_eu_btn_text)
+
+
+@when("I attach the file above")
+def i_attach_updated_file(driver):  # noqa
+    file_input = driver.find_element(by=By.NAME, value="file")
     file_input.clear()
     file_input.send_keys("/tmp/enforcement_check_import.xml")
-    upload_btn = driver.find_element_by_class_name("govuk-button")
+    upload_btn = driver.find_element(by=By.XPATH, value="//button[@type='submit']")
     upload_btn.click()
 
-    banner = driver.find_element_by_class_name("app-snackbar__content")
+    banner = driver.find_element(by=By.CLASS_NAME, value="app-snackbar__content")
     assert "Enforcement XML imported successfully" in banner.text
 
-    driver.find_element_by_link_text("Back to queue").click()
+    driver.find_element(by=By.LINK_TEXT, value="Back to queue").click()
 
 
 @then(parsers.parse('the application is removed from "{queue}" queue'))
@@ -94,12 +143,12 @@ def application_removed_from_queue(driver, queue):
     WebDriverWait(driver, 30).until(
         expected_conditions.presence_of_element_located((By.ID, ASSIGNED_QUEUES_ID))
     ).is_enabled()
-    queue_list = driver.find_element_by_id(ASSIGNED_QUEUES_ID).text.split("\n")
+    queue_list = driver.find_element(by=By.ID, value=ASSIGNED_QUEUES_ID).text.split("\n")
     assert queue not in queue_list
 
 
-@then("I cleanup the temporary files created")
-def application_removed_from_queue():
+@when("I cleanup the temporary files created")
+def clean_temporary_files():
     download_dir = "/tmp"
     for file in [f for f in os.listdir(download_dir) if f.endswith(".xml")]:
         try:

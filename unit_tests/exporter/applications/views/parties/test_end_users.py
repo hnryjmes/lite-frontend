@@ -51,20 +51,15 @@ def mock_post_party_document(requests_mock, data_standard_case):
 
 @pytest.fixture(autouse=True)
 def setup(
-    mock_countries, mock_application, mock_party_create, mock_party_get, mock_party_put, mock_post_party_document
+    mock_countries,
+    mock_application,
+    mock_party_create,
+    mock_party_get,
+    mock_party_put,
+    mock_post_party_document,
+    no_op_storage,
 ):
-    class NoOpStorage(Storage):
-        def save(self, name, content, max_length=None):
-            return name
-
-        def open(self, name, mode="rb"):
-            return None
-
-        def delete(self, name):
-            pass
-
-    with patch("exporter.applications.views.parties.end_users.SetPartyView.file_storage", new=NoOpStorage()):
-        yield
+    pass
 
 
 @pytest.fixture
@@ -383,8 +378,8 @@ def test_edit_end_user_document(
                 "goods_starting_point": "NI",
                 "destinations": {"type": "end_user", "data": {"country": {"is_eu": True}}},
                 "goods": [
-                    {"firearm_details": {"type": {"key": "software_related_to_firearms"}}},
-                    {"firearm_details": {"type": {"key": "technology_related_to_firearms"}}},
+                    {"good": {"firearm_details": {"type": {"key": "software_related_to_firearms"}}}},
+                    {"good": {"firearm_details": {"type": {"key": "technology_related_to_firearms"}}}},
                 ],
             },
             False,
@@ -394,7 +389,7 @@ def test_edit_end_user_document(
                 "goods_starting_point": "NI",
                 "destinations": {"type": "end_user", "data": {"country": {"is_eu": True}}},
                 "goods": [
-                    {"firearm_details": {"type": {"key": "software_related_to_firearms"}}},
+                    {"good": {"firearm_details": {"type": {"key": "software_related_to_firearms"}}}},
                 ],
             },
             False,
@@ -404,9 +399,9 @@ def test_edit_end_user_document(
                 "goods_starting_point": "NI",
                 "destinations": {"type": "end_user", "data": {"country": {"is_eu": True}}},
                 "goods": [
-                    {"firearm_details": {"type": {"key": "firearms"}}},
-                    {"firearm_details": {"type": {"key": "software_related_to_firearms"}}},
-                    {"firearm_details": {"type": {"key": "technology_related_to_firearms"}}},
+                    {"good": {"firearm_details": {"type": {"key": "firearms"}}}},
+                    {"good": {"firearm_details": {"type": {"key": "software_related_to_firearms"}}}},
+                    {"good": {"firearm_details": {"type": {"key": "technology_related_to_firearms"}}}},
                 ],
             },
             True,

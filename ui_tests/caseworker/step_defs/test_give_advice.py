@@ -1,10 +1,17 @@
-from pytest_bdd import when, then, parsers, scenarios
+import time
 
+from pytest_bdd import when, then, parsers, scenarios
+from selenium.webdriver.common.by import By
+
+from tests_common import functions
+from ui_tests.caseworker.pages.assign_flags_to_case import CaseFlagsPages
 from ui_tests.caseworker.pages.shared import Shared
 from ui_tests.caseworker.pages.advice import RecommendationsAndDecisionPage
 from ui_tests.caseworker.pages.case_page import CasePage, CaseTabs
+from ui_tests.caseworker.pages.generate_decision_documents_page import GeneratedDecisionDocuments
 from ui_tests.caseworker.pages.generate_document_page import GeneratedDocument
 from ui_tests.caseworker.pages.give_advice_pages import GiveAdvicePages
+from ui_tests.caseworker.pages.application_page import ApplicationPage
 
 scenarios("../features/give_advice.feature", strict_gherkin=False)
 
@@ -85,7 +92,7 @@ def enter_reporting_footnote(driver, footnote, context):  # noqa
 
 @then(parsers.parse('I should see my recommendation for "{countries}" with "{reasons}"'))
 def should_see_recommendation(driver, countries, reasons):  # noqa
-    text = driver.find_element_by_xpath("//main[@class='govuk-main-wrapper']//*").text
+    text = driver.find_element(by=By.XPATH, value="//main[@class='govuk-main-wrapper']//*").text
     for country in countries.split(","):
         assert country.strip() in text
     assert reasons.strip() in text
@@ -144,12 +151,24 @@ def should_see_application_ref_on_refusal_letter(driver, context):  # noqa
 @then("I see the licence number on the SIEL licence preview")
 def should_see_licence_number_on_siel_licence_preview(driver, context):  # noqa
     text = GeneratedDocument(driver).get_document_preview_text()
-    assert f"{context.reference_code}-01" in text
+    assert context.reference_code in text
 
 
 @then(parsers.parse('I see that "{item_name}" is "{value}" on the SIEL licence preview'))  # noqa
 def should_see_item_on_siel_licence_preview(driver, item_name, value):  # noqa
     assert value == GeneratedDocument(driver).get_item_from_siel_document_preview(item_name)
+
+
+@then(parsers.parse('the document name should be "{name}"'))
+def should_see_document_name_in_document_list(driver, name, context):  # noqa
+    doc_name = GeneratedDecisionDocuments(driver).get_decision_document_name()
+    assert name == doc_name
+
+
+@then("I see the product name under name on the document preview")
+def should_see_product_name_on_nlr_preview(driver, context):  # noqa
+    prod_name = GeneratedDocument(driver).get_product_name_from_nlr_document_preview()
+    assert context.goods[0]["good"]["name"] == prod_name
 
 
 @when("I go to the team advice")
@@ -165,3 +184,43 @@ def go_to_final_advice(driver):
 @when(parsers.parse('I select "{clearance_level}" clearance level'))
 def select_clearance_level(driver, clearance_level):
     GiveAdvicePages(driver).select_clearance_grading(clearance_level)
+
+
+@when(parsers.parse('I set a "{level}" flag'))  # noqa
+def assign_flags_to_case(driver, context, level):  # noqa
+    CaseFlagsPages(driver).select_flag(level)
+    functions.click_submit(driver)
+
+
+@when(parsers.parse('I unset a "{level}" flag'))  # noqa
+def assign_flags_to_case(driver, context, level):  # noqa
+    CaseFlagsPages(driver).deselect_flag(level)
+    functions.click_submit(driver)
+
+
+@when("I click edit flags on the last destination")
+def click_edit_destination_flags_link(driver):
+    destinations = CasePage(driver).get_destinations()
+    case_page = CasePage(driver)
+    case_page.select_destination(len(destinations) - 1)
+    case_page.click_edit_destinations_flags()
+
+
+@when("I click on details")
+def click_on_link(driver):
+    Shared(driver).expand_govuk_details()
+    time.sleep(1)
+
+
+@when(parsers.parse('I enter "{text}" as the countersign note'))
+def enter_case_note_text(driver, text, context):
+    application_page = ApplicationPage(driver)
+    if text == "too many characters":
+        text = "T" * 2201
+    context.text = text
+    application_page.enter_countersign_note(text)
+
+
+@then(parsers.parse('I see the case is assigned to "{queue}"'))  # noqa
+def case_not_assigned_to_any_queue(driver, queue):  # noqa
+    assert CasePage(driver).get_assigned_queues() == queue

@@ -1,7 +1,5 @@
 from django.utils import timezone
 from pytest_bdd import given, when, then, parsers
-import time
-
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions
 from selenium.webdriver.support.wait import WebDriverWait
@@ -120,9 +118,9 @@ def create_application(
 
 @then(parsers.parse('I should see the product name as "{product_name}" with product rating as "{clc_rating}"'))
 def check_product_name_and_rating(driver, product_name, clc_rating):  # noqa
-    product_table = driver.find_element_by_id("table-goods")
-    name_element = product_table.find_element_by_xpath("//tbody/tr/td[3]")
-    rating_element = product_table.find_element_by_xpath("//tbody/tr/td[6]")
+    product_table = driver.find_element(by=By.ID, value="table-goods")
+    name_element = product_table.find_element(by=By.XPATH, value="//tbody/tr/td[3]")
+    rating_element = product_table.find_element(by=By.XPATH, value="//tbody/tr/td[6]")
     assert name_element.text == product_name
     assert rating_element.text == clc_rating
 
@@ -151,8 +149,17 @@ def create_open_app(driver, apply_for_open_application):  # noqa
     pass
 
 
+@given("I prepare the application for final review NLR")
+def prepare_for_final_review_nlr(api_test_client):  # noqa
+    prepare_case(api_test_client, nlr=True)
+
+
 @given("I prepare the application for final review")
-def prepare_for_final_review(driver, api_test_client):  # noqa
+def prepare_for_final_review(api_test_client):  # noqa
+    prepare_case(api_test_client, nlr=False)
+
+
+def prepare_case(api_test_client, nlr):  # noqa
     api_test_client.gov_users.put_test_user_in_team("Admin")
     api_test_client.flags.assign_case_flags(api_test_client.context["case_id"], [])
     api_test_client.gov_users.put_test_user_in_team("Licensing Unit")
@@ -169,8 +176,8 @@ def prepare_for_final_review(driver, api_test_client):  # noqa
         good_id=api_test_client.context["good_id"],
         good_on_application_id=api_test_client.context["good_on_application_id"],
         case_id=api_test_client.context["case_id"],
-        control_list_entries=["ML1a"],
-        is_good_controlled=True,
+        control_list_entries=["ML1a"] if not nlr else [],
+        is_good_controlled=not nlr,
         report_summary="ARS",
     )
     api_test_client.cases.manage_case_status(
@@ -186,26 +193,29 @@ def prepare_for_final_review(driver, api_test_client):  # noqa
 @when("I click continue")
 @when("I click submit")
 def submit_form(driver):  # noqa
+    old_page = driver.find_element(by=By.TAG_NAME, value="html")
     Shared(driver).click_submit()
-    # handle case when scenario clicks submit in consecutive steps: there is a race condition resulting in the same
-    # submit button being clicked for each step
-    time.sleep(2)
+    WebDriverWait(driver, 20).until(expected_conditions.staleness_of(old_page))
 
 
 @when(parsers.parse('I click "{button_text}"'))
 def click_button_with_text(driver, button_text):  # noqa
-    driver.find_element(
-        by=By.XPATH,
-        value=(
-            f"//button[contains(@class, 'govuk-button') and contains(text(), '{button_text}')] "
-            f"| //a[contains(@class, 'govuk-button') and contains(text(), '{button_text}')]"
-        ),
+    WebDriverWait(driver, 20).until(
+        expected_conditions.presence_of_element_located(
+            (
+                By.XPATH,
+                (
+                    f"//button[contains(@class, 'govuk-button') and contains(text(), '{button_text}')] "
+                    f"| //a[contains(@class, 'govuk-button') and contains(text(), '{button_text}')]"
+                ),
+            )
+        )
     ).click()
 
 
 @when("I click back")
 def click_back_link(driver):  # noqa
-    driver.find_element_by_link_text("Back").click()
+    driver.find_element(by=By.LINK_TEXT, value="Back").click()
 
 
 @when("I click change status")  # noqa
@@ -257,7 +267,7 @@ def should_see_previously_created_application(driver, context):  # noqa
     functions.try_open_filters(driver)
     case_page.filter_by_case_reference(context.reference_code)
     functions.click_apply_filters(driver)
-    assert driver.find_element_by_id(context.case_id).is_displayed()
+    assert driver.find_element(by=By.ID, value=context.case_id).is_displayed()
 
 
 @when("I click on show filters")
@@ -267,7 +277,7 @@ def i_show_filters(driver):  # noqa
 
 @when(parsers.parse('I click on "{tab_name}" tab'))
 def i_click_on_case_details_tab(driver, tab_name):  # noqa
-    tabs = driver.find_element_by_class_name("lite-tabs")
+    tabs = driver.find_element(by=By.CLASS_NAME, value="lite-tabs")
     target = tabs.find_element_by_link_text(tab_name)
     target.click()
 
@@ -301,7 +311,7 @@ def get_profile_page(driver):  # noqa
 @when(parsers.parse('I change my team to "{team}" and default queue to "{queue}"'))  # noqa
 def go_to_team_edit_page(driver, team, queue):  # noqa
     # we should already be on the profile page
-    driver.find_element_by_id("link-edit-team").click()
+    WebDriverWait(driver, 30).until(expected_conditions.presence_of_element_located((By.ID, "link-edit-team"))).click()
     teams_page = TeamsPages(driver)
     teams_page.select_team_from_dropdown(team)
     teams_page.select_default_queue_from_dropdown(queue)
@@ -314,8 +324,8 @@ def get_my_case_list(driver):  # noqa
     Clicks on the menu and selects Cases
     Depending on team, default queue the list of cases will be different
     """
-    driver.find_element_by_id("link-menu").click()
-    driver.find_element_by_link_text("Cases").click()
+    driver.find_element(by=By.ID, value="link-menu").click()
+    driver.find_element(by=By.LINK_TEXT, value="Cases").click()
 
 
 @when("I click the application previously created")
@@ -331,8 +341,8 @@ def i_click_application_previously_created(driver, context):  # noqa
 
 @when(parsers.parse('I switch to queue "{queue}"'))  # noqa
 def switch_queue_dropdown(driver, queue):  # noqa
-    driver.find_element_by_id("link-queue").click()
-    queues = driver.find_element_by_id("queues")
+    driver.find_element(by=By.ID, value="link-queue").click()
+    queues = driver.find_element(by=By.ID, value="queues")
     queues.find_element_by_xpath(f"//a[contains(text(), '{queue}')]").click()
 
 
@@ -542,9 +552,9 @@ def i_create_an_standard_advice_picklist(context, add_a_standard_advice_picklist
 
 
 @when(parsers.parse('I expand the details for "{details_text}"'))
-def expand_details(driver, details_text):  # noqa
-    driver.find_element_by_xpath(
-        f"//details[@class='govuk-details']/summary/span[contains(text(), '{details_text}')]"
+def expand_details_for(driver, details_text):  # noqa
+    driver.find_element(
+        by=By.XPATH, value=f"//details[@class='govuk-details']/summary/span[contains(text(), '{details_text}')]"
     ).click()
 
 
@@ -628,7 +638,7 @@ def dont_see_previously_created_application(driver, context):  # noqa
     functions.try_open_filters(driver)
     case_page.filter_by_case_reference(context.reference_code)
     functions.click_apply_filters(driver)
-    assert context.reference_code not in driver.find_element_by_id("main-content").text
+    assert context.reference_code not in driver.find_element(by=By.ID, value="main-content").text
 
 
 @when("I click clear filters")  # noqa
@@ -705,7 +715,7 @@ def licence_audit(driver, context, internal_url):  # noqa
 def select_queue(driver, queue_name, check):  # noqa
     # selects the queue from the list of checkboxes and checks/unchecks
     # depending on the input state
-    queues = driver.find_elements_by_class_name("govuk-checkboxes__item")
+    queues = driver.find_elements(by=By.CLASS_NAME, value="govuk-checkboxes__item")
     target_queue = None
     for item in queues:
         label = item.find_element_by_xpath(".//label")
@@ -724,21 +734,37 @@ def select_queue(driver, queue_name, check):  # noqa
 
 
 @when(parsers.parse('I assign the case to "{queue}" queue'))  # noqa
-def case_assigned_to_queue(driver, queue):  # noqa
-    driver.find_element_by_id("link-change-queues").click()
+def assign_case_to_queue(driver, queue):  # noqa
+    driver.find_element(by=By.ID, value="link-change-queues").click()
     select_queue(driver, queue, True)
     functions.click_submit(driver)
 
 
 @then(parsers.parse('I remove the case from "{queue}" queue'))  # noqa
-def case_removed_from_queue(driver, queue):  # noqa
-    driver.find_element_by_id("link-change-queues").click()
+def remove_case_from_queue(driver, queue):  # noqa
+    driver.find_element(by=By.ID, value="link-change-queues").click()
     select_queue(driver, queue, False)
     functions.click_submit(driver)
 
 
-@then(parsers.parse("I see the case is not assigned to any queues"))  # noqa
-def case_not_assigned_to_any_queue(driver, queue):  # noqa
+@then(parsers.parse('I see the case is assigned to queues "{queues}"'))  # noqa
+def case_assigned_to_queues(driver, queues):  # noqa
+    assigned = CasePage(driver).get_assigned_queues()
+
+    for queue in queues.split(","):
+        assert queue.strip() in assigned
+
+
+@then(parsers.parse('I see the case is not assigned to queues "{queues}"'))  # noqa
+def case_not_assigned_to_queues(driver, queues):  # noqa
+    assigned = CasePage(driver).get_assigned_queues()
+
+    for queue in queues.split(","):
+        assert queue.strip() not in assigned
+
+
+@then("I see the case is not assigned to any queues")  # noqa
+def case_not_assigned_to_any_queue(driver):  # noqa
     assert CasePage(driver).get_assigned_queues() == "Not assigned to any queues"
 
 
@@ -747,3 +773,62 @@ def flag_not_present(driver, flag):  # noqa
     flags_container = driver.find_element_by_id("case-flags")
     el = flags_container.find_elements_by_xpath(f"//li[contains(text(), '{flag}')]")
     assert len(el) == 0
+
+
+@when("I click on the notes and timeline tab")  # noqa
+def case_notes_tab(driver, internal_url, context):  # noqa
+    ApplicationPage(driver).go_to_cases_activity_tab(internal_url, context)
+
+
+@then(parsers.parse('I see "{case_note}" as a case note'))  # noqa
+def note_is_displayed(driver, case_note):  # noqa
+    application_page = ApplicationPage(driver)
+    assert case_note in application_page.get_text_of_case_note(0)
+    assert utils.search_for_correct_date_regex_in_element(
+        application_page.get_text_of_case_note_date_time(0)
+    ), "incorrect time format of post on case note"
+
+
+@when(parsers.parse('I switch to "{team}" with queue "{queue}" and I submit the case'))
+def submit_case_as_team(driver, team, queue, context, internal_url):  # noqa
+    submit_case_as_team_with_decision(driver, team, queue, None, context, internal_url)
+
+
+@when(parsers.parse('I switch to "{team}" with queue "{queue}" and I submit the case with decision "{decision}"'))
+def submit_case_as_team_with_decision(driver, team, queue, decision, context, internal_url):  # noqa
+    get_profile_page(driver)
+    go_to_team_edit_page(driver, team, queue)
+    get_my_case_list(driver)
+    i_click_application_previously_created(driver, context)
+    im_done_button(driver)
+
+    if decision:
+        driver.find_element(by=By.XPATH, value="//span[contains(text(), 'Explain why')]").click()
+        driver.find_element(by=By.XPATH, value="//textarea[@id='note']").send_keys(decision)
+
+    submit_form(driver)
+    click_on_created_application(driver, context, internal_url)
+
+
+@then(parsers.parse('for the first good I see "{value}" for "{name}"'))
+def check_first_goods_row(driver, value, name):  # noqa
+    assert value == CasePage(driver).get_goods_row_with_headers(row_num=1)[name]
+
+
+@then(parsers.parse('for the second good I see "{value}" for "{name}"'))
+def check_second_goods_row(driver, value, name):  # noqa
+    assert value == CasePage(driver).get_goods_row_with_headers(row_num=2)[name]
+
+
+@then("I see the application destinations")
+def i_see_destinations(driver, context):  # noqa
+    destinations = [context.consignee, context.end_user, context.third_party, context.ultimate_end_user]
+    destinations_table_text = CasePage(driver).get_destinations_text()
+
+    for destination in destinations:
+        assert destination["name"] in destinations_table_text
+
+
+@then("I click on Notes and timeline")
+def click_on_notes_and_timeline(driver):  # noqa
+    ApplicationPage(driver).click_on_notes_and_timeline()

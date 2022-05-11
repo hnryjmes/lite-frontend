@@ -1,8 +1,9 @@
 from http import HTTPStatus
 
-from exporter.applications.helpers.date_fields import format_date
 from core import client
 from core.helpers import convert_parameters_to_query_params
+from exporter.applications.helpers.date_fields import format_date
+from exporter.core.constants import FIREARMS, PRODUCT_CATEGORY_FIREARM
 
 
 def get_goods(
@@ -29,7 +30,7 @@ def get_good_details(request, pk):
 
 
 def post_goods(request, json):
-    json["item_category"] = json.get("item_category", "group2_firearms")
+    json["item_category"] = json.get("item_category", PRODUCT_CATEGORY_FIREARM)
 
     if "is_pv_graded" in json and json["is_pv_graded"] == "yes":
         if "reference" in json:
@@ -43,7 +44,7 @@ def post_goods(request, json):
                 "date_of_issue": format_date(json, "date_of_issue"),
             }
 
-    if "item_category" in json and json["item_category"] == "group2_firearms":
+    if "item_category" in json and json["item_category"] == PRODUCT_CATEGORY_FIREARM:
         add_firearm_details_to_data(json)
 
     data = client.post(request, "/goods/", json)
@@ -51,6 +52,24 @@ def post_goods(request, json):
     if data.status_code == HTTPStatus.OK:
         data.json().get("good"), data.status_code
     return data.json(), data.status_code
+
+
+def post_firearm(request, json):
+    json["item_category"] = PRODUCT_CATEGORY_FIREARM
+
+    json["firearm_details"]["type"] = FIREARMS
+
+    data = client.post(request, "/goods/", json)
+
+    if data.status_code == HTTPStatus.OK:
+        data.json().get("good"), data.status_code
+    return data.json(), data.status_code
+
+
+def edit_firearm(request, pk, json):
+    response = client.put(request, f"/goods/{pk}", json)
+    response.raise_for_status()
+    return response.json(), response.status_code
 
 
 def add_section_certificate_details(firearm_details, json):
@@ -236,6 +255,12 @@ def post_good_documents(request, pk, json):
 def delete_good_document(request, pk, doc_pk):
     data = client.delete(request, f"/goods/{pk}/documents/" + doc_pk)
     return data.json(), data.status_code
+
+
+def update_good_document_data(request, pk, doc_pk, data):
+    response = client.put(request, f"/goods/{pk}/documents/{doc_pk}/", data)
+    response.raise_for_status()
+    return response.json(), response.status_code
 
 
 # Document Sensitivity
