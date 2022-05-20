@@ -1,5 +1,7 @@
+from http import HTTPStatus
 from bs4 import BeautifulSoup
 from django.urls import reverse
+from django.core.files.uploadedfile import SimpleUploadedFile
 import pytest
 
 from core import client
@@ -19,7 +21,7 @@ def url(data_queue, data_standard_case):
 
 
 def get_cells(soup, table_id):
-    return [td.text for td in soup.find(id=table_id).find_all("td")]
+    return [td.text.strip() for td in soup.find(id=table_id).find_all("td")]
 
 
 def test_tau_home_auth(authorized_client, url, mock_control_list_entries, mock_precedents_api):
@@ -102,15 +104,16 @@ def test_home_content(
 
     # Test elements of case info panel
     soup = BeautifulSoup(response.content, "html.parser")
-    assert soup.find(id="subtitle").text == "Assess 1 product(s) going from Great Britain to Abu Dhabi, United Kingdom"
+    assert soup.find(id="subtitle").text == "Assess 1 product going from Great Britain to Abu Dhabi, United Kingdom"
     assert get_cells(soup, "assessed-products") == [
-        "2",
+        "2.",
         "p2",
-        "444",
         "",
         "No",
+        "",
         "scale compelling technologies",
-        "Edit assessment",
+        "test assesment note",
+        "Edit",
     ]
 
     # Test if the link to edit assessed-products is sane
@@ -127,23 +130,46 @@ def test_home_content(
 
     # Test if the unassessed products table is sane
     assert get_cells(soup, "table-products-1") == [
+        "Product document (PDF, opens in new tab)",
+        "",
         "Select the type of firearm product",
         "Firearms",
         "Part number (optional)",
         "44",
         "Does the product have a government security grading or classification?",
         "Yes",
-        "Is the product for military use?",
+        "Enter a prefix (optional)",
+        "NATO",
+        "What is the security grading or classification?",
+        "Official",
+        "Name and address of the issuing authority",
+        "Government entity",
+        "Reference",
+        "GR123",
+        "Date of issue",
+        "20 February 2020",
+        "What is the calibre of the product?",
+        "0.25",
+        "Is the product a replica firearm?",
         "No",
-        "Will the product be onward exported to any additional countries?",
+        "Was the product made before 1938?",
+        "N/A",
+        "Will the product be incorporated into another item before it is onward exported?",
+        "N/A",
+        "Has the product been deactivated?",
         "No",
-        "Quantity",
-        "444",
+        "Number of items",
+        "2",
         "Total value",
-        "£0.00",
+        "£444.00",
+        "Will each product have a serial number or other identification marking?",
+        "Yes, I can add serial numbers now",
+        "Enter serial numbers or other identification markings",
+        "View serial numbers\n            \n\n\n            \n                1. 12345   \n            \n                2. ABC-123",
     ]
 
     # The precedent for the unassessed product
+
     assert get_cells(soup, "table-precedents-1") == [
         "Reference",
         "GBSIEL/2020/0002687/T",
@@ -172,6 +198,7 @@ def test_form(
     """
     Tests the submission of a valid form only. More tests on the form itself are in test_forms.py
     """
+
     # Remove assessment from a good
     good = data_standard_case["case"]["data"]["goods"][0]
     good["is_good_controlled"] = None
@@ -185,10 +212,33 @@ def test_form(
     unassessed_products = soup.find(id="unassessed-products").find_all("input")
     assert len(unassessed_products) == 1
     assert unassessed_products[0].attrs["value"] == good["id"]
-    response = authorized_client.post(
-        url, data={"report_summary": "test", "goods": [good["id"]], "does_not_have_control_list_entries": True}
+
+    # upload a evidence file
+    mock_internal_docs_post = requests_mock.post(
+        f"/goods/document_internal_good_on_application/0bedd1c3-cf97-4aad-b711-d5c9a9f4586e/",
+        json={},
+        status_code=HTTPStatus.CREATED,
     )
+
+    evidence_file = SimpleUploadedFile("test.pdf", b"file_content", content_type="application/pdf")
+
+    data = {
+        "report_summary": "test",
+        "goods": [good["id"]],
+        "does_not_have_control_list_entries": True,
+        "evidence_file": evidence_file,
+        "evidence_file_title": "new home evidence",
+    }
+
+    response = authorized_client.post(url, data=data)
     assert response.status_code == 302
+
+    assert mock_internal_docs_post.last_request.json() == {
+        "name": "test.pdf",
+        "s3_key": mock_internal_docs_post.last_request.json()["s3_key"],
+        "size": 0,
+        "document_title": "new home evidence",
+    }
     assert requests_mock.last_request.json() == {
         "control_list_entries": [],
         "report_summary": "test",

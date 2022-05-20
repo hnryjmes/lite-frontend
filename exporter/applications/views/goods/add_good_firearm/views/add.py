@@ -20,9 +20,9 @@ from exporter.core.constants import (
     FirearmsActSections,
 )
 from exporter.core.helpers import (
-    has_valid_rfd_certificate as has_valid_organisation_rfd_certificate,
     get_document_data,
     get_rfd_certificate,
+    has_valid_rfd_certificate as has_valid_organisation_rfd_certificate,
 )
 from exporter.core.wizard.conditionals import C
 from exporter.core.wizard.views import BaseSessionWizardView
@@ -65,7 +65,7 @@ from exporter.organisation.services import delete_document_on_organisation
 from .actions import GoodOnApplicationFirearmActCertificateAction, OrganisationFirearmActCertificateAction
 from .conditionals import (
     has_application_rfd_certificate,
-    has_firearm_act_document,
+    has_organisation_firearm_act_document,
     has_organisation_rfd_certificate,
     is_certificate_required,
     is_deactivated,
@@ -146,7 +146,7 @@ class AddGoodFirearm(
         AddGoodFirearmSteps.ATTACH_SECTION_5_LETTER_OF_AUTHORITY: C(
             is_product_covered_by_firearm_act_section(FirearmsActSections.SECTION_5)
         )
-        & ~C(has_firearm_act_document(FirearmsActDocumentType.SECTION_5)),
+        & ~C(has_organisation_firearm_act_document(FirearmsActDocumentType.SECTION_5)),
         AddGoodFirearmSteps.ATTACH_RFD_CERTIFICATE: is_registered_firearms_dealer,
         AddGoodFirearmSteps.PRODUCT_DOCUMENT_SENSITIVITY: is_product_document_available,
         AddGoodFirearmSteps.PRODUCT_DOCUMENT_UPLOAD: C(is_product_document_available) & ~C(is_document_sensitive),
@@ -431,24 +431,14 @@ class AddGoodFirearmToApplication(
             payload,
         )
 
-    def handle_service_error(self, service_error):
-        logger.error(
-            service_error.log_message,
-            service_error.status_code,
-            service_error.response,
-            exc_info=True,
-        )
-        if settings.DEBUG:
-            raise service_error
-        return error_page(self.request, service_error.user_message)
-
     def get_context_data(self, form, **kwargs):
         ctx = super().get_context_data(form, **kwargs)
 
         ctx["back_link_url"] = reverse(
-            "applications:new_good",
+            "applications:product_summary",
             kwargs={
                 "pk": self.kwargs["pk"],
+                "good_pk": self.good["id"],
             },
         )
         ctx["title"] = form.Layout.TITLE

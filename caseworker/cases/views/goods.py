@@ -1,5 +1,6 @@
 from collections import OrderedDict
 
+from django.conf import settings
 from formtools.wizard.views import SessionWizardView
 
 from caseworker.cases.forms.review_goods import review_goods_form, ExportControlCharacteristicsForm
@@ -191,8 +192,22 @@ class ReviewOpenApplicationGoodWizardView(AbstractReviewGoodWizardView):
 
 
 class GoodDetails(LoginRequiredMixin, FormView):
-    template_name = "case/product-on-case.html"
     form_class = SearchForm
+
+    def get_template_names(self):
+        product_1_template = "case/product-on-case.html"
+
+        if not settings.FEATURE_FLAG_PRODUCT_2_0:
+            return product_1_template
+
+        firearm_details = self.object.get("firearm_details")
+        if not firearm_details:
+            return product_1_template
+
+        if firearm_details["type"]["key"] != "firearms":
+            return product_1_template
+
+        return "case/product-on-case-product2-0.html"
 
     @cached_property
     def object(self):
@@ -218,20 +233,33 @@ class GoodDetails(LoginRequiredMixin, FormView):
 
     def get_context_data(self, **kwargs):
         form = self.get_form()
-        goa_documents = get_good_on_application_documents(
-            self.request, self.object["application"], self.object["good"]["id"]
-        )
+
         case = get_case(self.request, self.kwargs["pk"])
+
+        good_on_application_documents = get_good_on_application_documents(
+            self.request,
+            self.object["application"],
+            self.object["good"]["id"],
+        )
+        good_on_application_documents = {
+            item["document_type"].replace("-", "_"): item for item in good_on_application_documents["documents"]
+        }
+
         organisation_documents = {
             item["document_type"].replace("-", "_"): item for item in case.organisation["documents"]
         }
+
+        rfd_certificate = organisation_documents.get("rfd_certificate")
+        is_user_rfd = bool(rfd_certificate) and not rfd_certificate["is_expired"]
+
         return super().get_context_data(
             good_on_application=self.object,
-            good_on_application_documents=goa_documents,
+            good_on_application_documents=good_on_application_documents,
             case=case,
             other_cases=self.other_cases,
             # for pagination
             data={"total_pages": self.other_cases["count"] // form.page_size} if self.other_cases else {},
             organisation_documents=organisation_documents,
+            is_user_rfd=is_user_rfd,
             **kwargs,
         )

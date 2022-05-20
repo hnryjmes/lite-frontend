@@ -1,3 +1,5 @@
+import os
+
 from django.http import Http404
 from django.shortcuts import redirect
 from django.views.generic import FormView, View
@@ -11,6 +13,8 @@ from caseworker.tau.services import get_recent_precedent
 from core.auth.views import LoginRequiredMixin
 from caseworker.core.services import get_control_list_entries
 from caseworker.cases.services import post_review_good
+from caseworker.core.constants import ALL_CASES_QUEUE_ID
+from .actions import GoodOnApplicationInternalDocumentAction
 
 
 class TAUMixin:
@@ -32,12 +36,43 @@ class TAUMixin:
         return case
 
     @cached_property
+    def organisation_documents(self):
+        """This property will collect the org documents that we need to access
+        in the template e.g. section 5 certificate etc."""
+        documents = {}
+        for item in self.case.organisation["documents"]:
+            key = item["document_type"].replace("-", "_")
+            documents[key] = item
+            item["document"]["url"] = reverse(
+                "cases:document",
+                kwargs={"queue_pk": self.queue_id, "pk": self.case.id, "file_pk": item["document"]["id"]},
+            )
+        return documents
+
+    @cached_property
     def goods(self):
         goods = []
         precedents = get_recent_precedent(self.request, self.case)
         for item in self.case.goods:
+            # Populate precedents
+            if precedents[item["id"]]:
+                precedents[item["id"]]["queue"] = precedents[item["id"]]["queue"] or ALL_CASES_QUEUE_ID
             item["precedent"] = precedents[item["id"]]
+            # Populate document urls
+            for document in item["good"]["documents"]:
+                _, fext = os.path.splitext(document["name"])
+                document["type"] = fext[1:].upper()
+                document["url"] = reverse(
+                    "cases:document", kwargs={"queue_pk": self.queue_id, "pk": self.case.id, "file_pk": document["id"]}
+                )
+
+            # It duplicates these documents in each good but this is unavoidable now
+            # because of the way we are rendering each good.
+            # Once that is updated then we can remove this.
+            item["organisation_documents"] = self.organisation_documents
+
             goods.append(item)
+
         return goods
 
     @cached_property
@@ -60,6 +95,22 @@ class TAUMixin:
     @property
     def good_id(self):
         return str(self.kwargs["good_id"])
+
+    @property
+    def evidence_doc(self):
+        good = self.get_good()
+        # we are making an assumption here that we only storing one evidence document
+        if good["good_application_internal_documents"]:
+            good["good_application_internal_documents"][0]["url"] = reverse(
+                "cases:document",
+                kwargs={
+                    "queue_pk": self.queue_id,
+                    "pk": self.case.id,
+                    "file_pk": good["good_application_internal_documents"][0]["id"],
+                },
+            )
+            return good["good_application_internal_documents"][0]
+        return {}
 
 
 class TAUHome(LoginRequiredMixin, TAUMixin, FormView):
@@ -85,6 +136,7 @@ class TAUHome(LoginRequiredMixin, TAUMixin, FormView):
             "queue_id": self.queue_id,
             "assessed_goods": self.assessed_goods,
             "unassessed_goods": self.unassessed_goods,
+            "organisation_documents": self.organisation_documents,
         }
 
     def get_goods(self, good_ids):
@@ -100,14 +152,24 @@ class TAUHome(LoginRequiredMixin, TAUMixin, FormView):
         # ExportControlCharacteristicsForm. Going forwards, we want to deduce this like so -
         is_good_controlled = not data.pop("does_not_have_control_list_entries")
         good_ids = data.pop("goods")
+        file = data.pop("evidence_file")
+        file_title = data.pop("evidence_file_title")
+
         for good in self.get_goods(good_ids):
+            good_evidence_document_action = GoodOnApplicationInternalDocumentAction(
+                request=self.request, good=good, file=file, file_title=file_title
+            )
+
             payload = {
                 **form.cleaned_data,
                 "current_object": good["id"],
                 "objects": [good["good"]["id"]],
                 "is_good_controlled": is_good_controlled,
             }
+
+            good_evidence_document_action.run()
             post_review_good(self.request, case_id=self.kwargs["pk"], data=payload)
+
         return super().form_valid(form)
 
 
@@ -123,6 +185,9 @@ class TAUEdit(LoginRequiredMixin, TAUMixin, FormView):
     def get_form_kwargs(self):
         form_kwargs = super().get_form_kwargs()
         form_kwargs["control_list_entries_choices"] = self.control_list_entries
+        evidence_doc = self.evidence_doc
+
+        form_kwargs["document"] = evidence_doc
         good = self.get_good()
         form_kwargs["data"] = self.request.POST or {
             "control_list_entries": [cle["rating"] for cle in good["control_list_entries"]],
@@ -130,6 +195,7 @@ class TAUEdit(LoginRequiredMixin, TAUMixin, FormView):
             "is_wassenaar": "WASSENAAR" in {flag["name"] for flag in good["flags"]},
             "report_summary": good["report_summary"],
             "comment": good["comment"],
+            "evidence_file_title": evidence_doc.get("document_title", ""),
         }
         return form_kwargs
 
@@ -141,7 +207,13 @@ class TAUEdit(LoginRequiredMixin, TAUMixin, FormView):
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        return {**context, "case": self.case, "queue_id": self.queue_id, "good": self.get_good()}
+        return {
+            **context,
+            "case": self.case,
+            "queue_id": self.queue_id,
+            "good": self.get_good(),
+            "organisation_documents": self.organisation_documents,
+        }
 
     def form_valid(self, form):
         data = form.cleaned_data
@@ -149,12 +221,22 @@ class TAUEdit(LoginRequiredMixin, TAUMixin, FormView):
         # `is_good_controlled`.has an explicit checkbox called "Is a licence required?" in
         # ExportControlCharacteristicsForm. Going forwards, we want to deduce this like so -
         is_good_controlled = not data.pop("does_not_have_control_list_entries")
+        good = self.get_good()
+
+        file = data.pop("evidence_file")
+        file_title = data.pop("evidence_file_title")
+        good_evidence_document_action = GoodOnApplicationInternalDocumentAction(
+            request=self.request, good=good, file=file, file_title=file_title
+        )
+        good_evidence_document_action.run()
+
         payload = {
             **form.cleaned_data,
             "current_object": self.good_id,
-            "objects": [self.get_good()["good"]["id"]],
+            "objects": [good["good"]["id"]],
             "is_good_controlled": is_good_controlled,
         }
+
         post_review_good(self.request, case_id=self.kwargs["pk"], data=payload)
         return super().form_valid(form)
 

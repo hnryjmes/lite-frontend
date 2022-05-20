@@ -279,15 +279,29 @@ def get_document_data(file):
     }
 
 
-def has_firearm_act_document(application, document_type):
+def has_organisation_firearm_act_document(application, document_type):
     documents = get_organisation_documents(application)
     return document_type in documents
 
 
-def get_firearm_act_document(application, document_type):
+def get_organisation_firearm_act_document(application, document_type):
     documents = get_organisation_documents(application)
     return documents[document_type]
 
 
 def convert_api_date_string_to_date(date_str):
     return datetime.datetime.strptime(date_str, "%d %B %Y").date()
+
+
+def get_user_organisation_documents(organisation):
+    return {item["document_type"]: item for item in organisation.get("documents", [])}
+
+
+def get_organisation_rfd_certificate(organisation):
+    documents = get_user_organisation_documents(organisation)
+    return documents.get(constants.DocumentType.RFD_CERTIFICATE)
+
+
+def has_valid_organisation_rfd_certificate(organisation):
+    document = get_organisation_rfd_certificate(organisation)
+    return bool(document) and not document["is_expired"]

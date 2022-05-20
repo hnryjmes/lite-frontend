@@ -146,6 +146,12 @@ def post_firearm_good_on_application(request, pk, good_id, json):
     return response.json(), response.status_code
 
 
+def edit_firearm_good_on_application(request, pk, json):
+    response = client.put(request, f"/applications/good-on-application/{pk}/", json)
+    response.raise_for_status()
+    return response.json(), response.status_code
+
+
 def post_good_on_application(request, pk, json):
     good = None
     preexisting = str_to_bool(request.GET.get("preexisting"))
@@ -299,8 +305,12 @@ def delete_additional_document(request, pk, doc_pk):
     return data.status_code
 
 
-def get_application_documents(request, pk, good_pk):
-    response = client.get(request, f"/applications/{pk}/goods/{good_pk}/documents/")
+def get_application_documents(request, pk, good_pk, include_unsafe=False):
+    params = ""
+    if include_unsafe:
+        params = "?include_unsafe=1"
+    url = f"/applications/{pk}/goods/{good_pk}/documents/{params}"
+    response = client.get(request, url)
     response.raise_for_status()
     return response.json(), response.status_code
 
@@ -339,6 +349,21 @@ def delete_application_document_data(request, pk, good_pk, data):
 def delete_application_preexisting_good(request, good_on_application_pk):
     response = client.delete(request, f"/applications/good-on-application/{good_on_application_pk}")
     return response.status_code
+
+
+def get_good_on_application_documents(request, application_id, good_id, good_on_application_id):
+    application_documents, status_code = get_application_documents(
+        request,
+        application_id,
+        good_id,
+    )
+    application_documents = application_documents["documents"]
+
+    good_on_application_documents = [
+        document for document in application_documents if document["good_on_application"] == good_on_application_id
+    ]
+
+    return good_on_application_documents, status_code
 
 
 def get_case_notes(request, pk):

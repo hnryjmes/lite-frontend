@@ -1,0 +1,32 @@
+{% load advice_tags tau_tags %}
+<table id="table-products-{{ forloop.counter }}" class="govuk-table">
+    <tbody class="govuk-table__body">
+      {% with good_on_application=good good=good.good firearm_details=good.firearm_details organisation_documents=good.organisation_documents %}
+        {% include "tau/includes/product_document.html" %}
+        {% include "tau/includes/product_details.html" %}
+        {% include "tau/includes/security_grading.html" %}
+        <tr class="govuk-table__row">
+          <td class="govuk-table__header">What is the calibre of the product?</td>
+          <td class="govuk-table__cell">{{ good.firearm_details.calibre }}</td>
+        </tr>
+
+        {% include "tau/includes/section5_firearm_act_1968.html" %}
+
+        {% include "tau/includes/onward_exported.html" %}
+
+        <tr class="govuk-table__row">
+          <td class="govuk-table__header">Does the product have a valid proof mark?</td>
+          <td class="govuk-table__cell">{{ firearm_details.has_proof_mark|yesno|title }}</td>
+        </tr>
+        {% if firearm_details.has_proof_mark is False %}
+          <tr class="govuk-table__row">
+            <td class="govuk-table__header">Explain why the product doesn’t have a valid proof mark</td>
+            <td class="govuk-table__cell">{{ firearm_details.no_proof_mark_details }}</td>
+          </tr>
+        {% endif %}
+        {% include "tau/includes/product_items_value.html" %}
+        {% include "tau/includes/identification_markings.html" %}
+
+      {% endwith %}
+    </tbody>
+  </table>
