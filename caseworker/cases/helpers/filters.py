@@ -124,29 +124,6 @@ def case_filters_bar(request, filters, is_system_queue) -> FiltersBar:
             TextInput(name="party_name", title=CasesListPage.Filters.PARY_NAME),
             TextInput(name="party_address", title=CasesListPage.Filters.PARTY_ADDRESS),
             TextInput(name="goods_related_description", title=CasesListPage.Filters.GOODS_RELATED_DESCRIPTION),
-            AutocompleteInput(
-                name="country",
-                title=CasesListPage.Filters.COUNTRY,
-                options=get_countries(request, convert_to_options=True),
-                initial=selected_filters.get("country"),
-            ),
-            AutocompleteInput(
-                name="control_list_entry",
-                title=CasesListPage.Filters.CONTROL_LIST_ENTRY,
-                options=get_control_list_entries(request, convert_to_options=True),
-                initial=selected_filters.get("control_list_entry"),
-            ),
-            AutocompleteInput(
-                name="regime_entry",
-                title=CasesListPage.Filters.REGIME_ENTRY,
-                options=get_regime_entries(request),
-                initial=selected_filters.get("regime_entry"),
-            ),
-            TokenBar(
-                name="flags",
-                title=CasesListPage.Filters.FLAGS,
-                options=[Option(flag["id"], flag["name"]) for flag in get_flags(request, disable_pagination=True)],
-            ),
             Checkboxes(
                 name="is_nca_applicable",
                 options=[
