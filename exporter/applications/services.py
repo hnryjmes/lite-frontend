@@ -550,3 +550,8 @@ def get_appeal(request, application_pk, appeal_pk):
 def get_appeal_document(request, appeal_pk, document_pk):
     data = client.get(request, f"/appeals/{appeal_pk}/documents/{document_pk}/")
     return data.json(), data.status_code
+
+
+def stream_appeal_document(request, appeal_pk, document_pk):
+    response = client.get(request, f"/appeals/{appeal_pk}/documents/{document_pk}/stream/", stream=True)
+    return response, response.status_code
