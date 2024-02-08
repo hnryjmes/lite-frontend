@@ -578,6 +578,11 @@ def get_appeal_document(request, appeal_pk, document_pk):
     return data.json(), data.status_code
 
 
-def post_survey_feedback(request, pk, json):
-    data = client.post(request, f"/survey/{pk}/", json)
+def post_survey_feedback(request, json):
+    data = client.post(request, f"/survey/", json)
+    return data.json(), data.status_code
+
+
+def get_survey(request, survey_id):
+    data = client.get(request, f"/survey/{survey_id}/")
     return data.json(), data.status_code

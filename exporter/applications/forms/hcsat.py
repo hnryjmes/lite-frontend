@@ -1,8 +1,7 @@
 from crispy_forms_gds.helper import FormHelper
-from crispy_forms_gds.layout import Field, Layout, Submit, Button
-from crispy_forms_gds.choices import Choice
-from django import forms
+from crispy_forms_gds.layout import Field, Layout, Submit, HTML
 from django.urls import reverse_lazy
+from django import forms
 
 
 class HCSATminiform(forms.Form):
@@ -53,6 +52,7 @@ class HCSATApplicationForm(HCSATminiform):
         widget=forms.CheckboxSelectMultiple,
         label="Did you experience any of the following issues?",
         help_text="Tick all that apply",
+        required=False,
     )
 
     HELPFUL_GUIDANCE = [
@@ -66,6 +66,7 @@ class HCSATApplicationForm(HCSATminiform):
         choices=HELPFUL_GUIDANCE,
         widget=forms.RadioSelect,
         label="To what extent do you agree that the guidance available during the application process was helpful?",
+        required=False,
     )
 
     USER_ACCOUNT_PROCESS = [
@@ -79,12 +80,14 @@ class HCSATApplicationForm(HCSATminiform):
         choices=USER_ACCOUNT_PROCESS,
         widget=forms.RadioSelect,
         label="How would you describe the process of creating a user account on this service?",
+        required=False,
     )
 
     service_improvements_feedback = forms.CharField(
         label="How could we improve this service?",
         widget=forms.Textarea,
         help_text="Do not include any personal information, like your name or email address",
+        required=False,
     )
 
     def __init__(self, *args, **kwargs):
@@ -101,10 +104,5 @@ class HCSATApplicationForm(HCSATminiform):
             Field("user_account_process"),
             Field("service_improvements_feedback"),
             Submit("submit", "Submit feedback"),
-            Button(
-                "cancel",
-                "Cancel",
-                reverse_lazy("core:home"),
-                css_class="govuk-button--secondary",
-            ),
+            HTML(f'<a href="{reverse_lazy("core:home")}" class="govuk-button govuk-button--secondary">Cancel</a>'),
         )

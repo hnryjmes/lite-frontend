@@ -358,12 +358,12 @@ class ApplicationSubmitSuccessPage(LoginRequiredMixin, FormView):
         "Error sending feedback",
         "Unexpected error sending feedback",
     )
-    def post_survey_feedback(self, request, application_pk, data):
-        return post_survey_feedback(request, application_pk, data)
+    def post_survey_feedback(self, request, data):
+        return post_survey_feedback(request, data)
 
     def form_valid(self, form):
-        self.post_survey_feedback(self.request, self.kwargs["pk"], form.cleaned_data)
-        self.recommendation = form.cleaned_data["recommendation"]
+        survey, _ = self.post_survey_feedback(self.request, form.cleaned_data)
+        self.survey_id = survey["id"]
         return super().form_valid(form)
 
     def get_success_url(self):
@@ -371,7 +371,7 @@ class ApplicationSubmitSuccessPage(LoginRequiredMixin, FormView):
             "applications:application-hcsat",
             kwargs={
                 "pk": self.kwargs["pk"],
-                "recommendation": self.recommendation,
+                "sid": self.survey_id,
             },
         )
 
