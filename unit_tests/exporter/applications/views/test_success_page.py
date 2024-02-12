@@ -50,7 +50,7 @@ def mock_post_survey(requests_mock, survey_id):
     return requests_mock.post(
         survey_url,
         json={"id": survey_id},
-        status_code=200,
+        status_code=201,
     )
 
 

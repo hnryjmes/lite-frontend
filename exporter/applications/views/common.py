@@ -354,7 +354,7 @@ class ApplicationSubmitSuccessPage(LoginRequiredMixin, FormView):
         return context
 
     @expect_status(
-        HTTPStatus.OK,
+        HTTPStatus.CREATED,
         "Error sending feedback",
         "Unexpected error sending feedback",
     )

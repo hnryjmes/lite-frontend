@@ -45,9 +45,9 @@ def application_reference_number(data_standard_case):
 
 
 @pytest.fixture(autouse=True)
-def mock_post_survey(requests_mock, survey_id):
-    survey_url = client._build_absolute_uri(f"/survey/")
-    return requests_mock.post(
+def mock_update_survey(requests_mock, survey_id):
+    survey_url = client._build_absolute_uri(f"/survey/{survey_id}")
+    return requests_mock.put(
         survey_url,
         json={"id": survey_id},
         status_code=200,

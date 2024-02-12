@@ -586,3 +586,8 @@ def post_survey_feedback(request, json):
 def get_survey(request, survey_id):
     data = client.get(request, f"/survey/{survey_id}/")
     return data.json(), data.status_code
+
+
+def update_survey_feedback(request, survey_id, json):
+    data = client.put(request, f"/survey/{survey_id}/", json)
+    return data.json(), data.status_code
