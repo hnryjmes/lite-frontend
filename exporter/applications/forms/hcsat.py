@@ -5,7 +5,7 @@ from django import forms
 
 
 class HCSATminiform(forms.Form):
-    SAT_CHOICES = [
+    RECOMMENDATION_CHOICES = [
         ("VERY_DISSATISFIED", "Very dissatisfied"),
         ("DISSATISFIED", "Dissatisfied"),
         ("NEUTRAL", "Neutral"),
@@ -14,7 +14,7 @@ class HCSATminiform(forms.Form):
     ]
 
     recommendation = forms.ChoiceField(
-        choices=SAT_CHOICES,
+        choices=RECOMMENDATION_CHOICES,
         widget=forms.RadioSelect,
         help_text="",
         label="",
