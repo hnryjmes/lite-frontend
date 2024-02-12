@@ -6,11 +6,11 @@ from django import forms
 
 class HCSATminiform(forms.Form):
     SAT_CHOICES = [
-        ("VERY_DISSATISFIED", "1"),
-        ("DISSATISFIED", "2"),
-        ("NEUTRAL", "3"),
-        ("SATISFIED", "4"),
-        ("VERY_SATISFIED", "5"),
+        ("VERY_DISSATISFIED", "Very dissatisfied"),
+        ("DISSATISFIED", "Dissatisfied"),
+        ("NEUTRAL", "Neutral"),
+        ("SATISFIED", "Satisfied"),
+        ("VERY_SATISFIED", "Very satisfied"),
     ]
 
     recommendation = forms.ChoiceField(
