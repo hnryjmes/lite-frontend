@@ -45,14 +45,6 @@ class HCSATApplicationPage(LoginRequiredMixin, FormView):
     def get_survey(self, request, survey_id):
         return get_survey(request, survey_id)
 
-    def get_initial_for_field(self, field, field_name):
-        """
-        Return initial data for field on form. Use initial data from the form
-        or the field, in that order. Evaluate callable values.
-        """
-        value = super().get_initial_for_field(field, field_name)
-        return value
-
     def get_initial(self):
         initial = super().get_initial()
         self.survey, _ = self.get_survey(self.request, self.kwargs["sid"])
