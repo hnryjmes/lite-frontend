@@ -683,7 +683,7 @@ def mock_get_survey(requests_mock, survey_id):
     )
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture
 def mock_get_application(requests_mock, application_pk, application_reference_number):
     return requests_mock.get(
         client._build_absolute_uri(f"/applications/{application_pk}"),

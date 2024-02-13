@@ -44,6 +44,11 @@ def application_reference_number(data_standard_case):
     return data_standard_case["case"]["reference_code"]
 
 
+@pytest.fixture(autouse=True)
+def setup(mock_get_application):
+    yield
+
+
 def test_success_view(
     authorized_client, success_url, application_reference_number, application_url, home_url, application_start_url
 ):

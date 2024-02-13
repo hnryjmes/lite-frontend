@@ -44,7 +44,17 @@ def application_reference_number(data_standard_case):
     return data_standard_case["case"]["reference_code"]
 
 
-def test_hcsat_view(authorized_client, hcsat_url, application_url, mock_get_survey):
+@pytest.fixture(autouse=True)
+def setup(mock_get_application):
+    yield
+
+
+def test_hcsat_view(
+    authorized_client,
+    hcsat_url,
+    application_url,
+    mock_get_survey,
+):
     response = authorized_client.get(hcsat_url)
 
     assert response.status_code == 200
