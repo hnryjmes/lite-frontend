@@ -1,0 +1,22 @@
+{% load l10n crispy_forms_gds %}
+<div class="barrier-rating">
+    <div class="rating-box govuk-heading-xl">
+        {% for choice in field.field.choices %}
+            <input
+                type="radio"
+                name="{{ field.html_name }}"
+                id="star{{ forloop.counter }}"
+                value="{{ choice.0|unlocalize }}"
+                {% if choice.0|stringformat:"s" == field.value|stringformat:"s" %}
+                    checked="checked"
+                {% endif %}
+            />
+            <label for="star{{ forloop.counter }}" class="rating-star-item">  </label>
+        {% endfor %}
+        <div class="flex-break"></div>
+        {% for choice in field.field.choices %}
+            <div id="rating{{ forloop.counter }}" class="govuk-body-l">{{ choice.1|unlocalize }}</div>
+        {% endfor %}
+    </div>
+
+</div>

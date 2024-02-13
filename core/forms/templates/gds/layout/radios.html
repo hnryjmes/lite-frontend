@@ -1,3 +1,8 @@
+<!--
+This file is a template for the radios.html snippet to fix the line below which would mark checked when a choice is IN the field
+https://github.com/wildfish/crispy-forms-gds/blob/e5ecb6fc3ac906c80f1bd9f1d4a12e51c7bfa89d/src/crispy_forms_gds/templates/gds/layout/radios.html#L24
+-->
+
 {% load l10n crispy_forms_gds %}
 <fieldset class="govuk-fieldset"{% if field.help_text or field.errors %} aria-describedby="{% if field.help_text %}{{ field.auto_id }}_hint{% endif %}{% for error in field.errors %} {{ field.auto_id }}_{{ forloop.counter }}_error{% endfor %}"{% endif %}>
 

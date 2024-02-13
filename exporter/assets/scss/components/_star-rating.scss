@@ -1,0 +1,139 @@
+.barrier-rating {
+    text-align: center;
+    width: 100%;
+    margin: auto;
+    border: 2px solid #f3f2f1;
+    padding-top: 2em;
+
+    input[type="radio"] {
+        position: fixed;
+        top: 0;
+        right: 100%;
+    }
+
+    label {
+        padding: 0.4em;
+        float: left;
+        cursor: pointer;
+    }
+
+    input[type="radio"]:checked~input+label {
+        background: none;
+        color: #aaa;
+        position: relative;
+        background: url('../images/light-star.svg');
+        background-size: 6rem 4rem;
+        height: 1rem;
+        width: 2.1rem;
+        margin-bottom: 5px;
+
+        @include mq($from: desktop) {
+            background-size: 7rem 5rem;
+            height: 2rem;
+            width: 3rem;
+        }
+    }
+
+    input+label {
+        background: #fff;
+        color: orange;
+        background-image: url('../images/star.svg');
+        background-size: 6rem 4rem;
+        height: 1rem;
+        width: 2.1rem;
+        margin-bottom: 5px;
+
+        @include mq($from: desktop) {
+            background-size: 7rem 5rem;
+            height: 2rem;
+            width: 3rem;
+        }
+    }
+
+    input+label:first-of-type {
+        border-top-left-radius: 8px;
+        border-bottom-left-radius: 8px;
+    }
+
+    input:checked+label {
+        border-top-right-radius: 8px;
+        border-bottom-right-radius: 8px;
+    }
+
+    hr {
+        clear: both;
+        border: 0;
+    }
+
+    .rating-box {
+        margin: auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+        width: 450px;
+        white-space: nowrap;
+
+        @include mq($from: desktop) {
+            width: 500px;
+        }
+    }
+
+    .flex-break {
+        flex-basis: 100%;
+        height: 0;
+    }
+
+    .rating-star-item {
+        flex: 0 1 calc(13% - 8px);
+    }
+
+    #rating1,
+    #rating2,
+    #rating3,
+    #rating4,
+    #rating5 {
+        display: none;
+        white-space: nowrap;
+        width: 350px;
+
+        @include mq($from: desktop) {
+            width: 500px;
+        }
+    }
+
+    input[type="radio"]:checked#star1~#rating1 {
+        display: flex;
+        justify-content: center;
+        z-index: 2;
+        margin-left: -10px;
+    }
+
+    input[type="radio"]:checked#star2~#rating2 {
+        display: flex;
+        justify-content: center;
+        z-index: 2;
+        margin-left: -10px;
+    }
+
+    input[type="radio"]:checked#star3~#rating3 {
+        display: flex;
+        justify-content: center;
+        z-index: 2;
+        margin-left: -10px;
+    }
+
+    input[type="radio"]:checked#star4~#rating4 {
+        display: flex;
+        justify-content: center;
+        z-index: 2;
+        margin-left: -10px;
+    }
+
+    input[type="radio"]:checked#star5~#rating5 {
+        display: flex;
+        justify-content: center;
+        z-index: 2;
+        margin-left: -10px;
+    }
+}

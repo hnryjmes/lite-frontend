@@ -3,6 +3,8 @@ from crispy_forms_gds.layout import Field, Layout, Submit, HTML
 from django.urls import reverse_lazy
 from django import forms
 
+from core.forms.layouts import StarRadioSelect
+
 
 class HCSATminiform(forms.Form):
     RECOMMENDATION_CHOICES = [
@@ -25,7 +27,7 @@ class HCSATminiform(forms.Form):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            Field("recommendation"),
+            StarRadioSelect("recommendation"),
             Submit("submit", "Submit feedback"),
         )
 
@@ -97,7 +99,7 @@ class HCSATApplicationForm(HCSATminiform):
         ].help_text = "Overall, how would you rate your experience with the 'apply for a standard individual export licence (SIEL)' service today?"
         self.helper = FormHelper()
         self.helper.layout = Layout(
-            Field("recommendation"),
+            StarRadioSelect("recommendation"),
             Field("experienced_issue"),
             Field("other_detail"),
             Field("helpful_guidance"),
