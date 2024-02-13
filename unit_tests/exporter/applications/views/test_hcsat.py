@@ -44,36 +44,7 @@ def application_reference_number(data_standard_case):
     return data_standard_case["case"]["reference_code"]
 
 
-@pytest.fixture(autouse=True)
-def mock_update_survey(requests_mock, survey_id):
-    survey_url = client._build_absolute_uri(f"/survey/{survey_id}")
-    return requests_mock.put(
-        survey_url,
-        json={"id": survey_id},
-        status_code=200,
-    )
-
-
-@pytest.fixture(autouse=True)
-def mock_get_survey(requests_mock, survey_id):
-    survey_url = client._build_absolute_uri(f"/survey/{survey_id}")
-    return requests_mock.get(
-        survey_url,
-        json={"id": survey_id},
-        status_code=200,
-    )
-
-
-@pytest.fixture(autouse=True)
-def mock_get_application(requests_mock, application_pk, application_reference_number):
-    return requests_mock.get(
-        client._build_absolute_uri(f"/applications/{application_pk}"),
-        json={"id": application_pk, "reference_code": application_reference_number, "status": "submitted"},
-        status_code=200,
-    )
-
-
-def test_hcsat_view(authorized_client, hcsat_url, application_url):
+def test_hcsat_view(authorized_client, hcsat_url, application_url, mock_get_survey):
     response = authorized_client.get(hcsat_url)
 
     assert response.status_code == 200
@@ -88,19 +59,41 @@ def test_hcsat_view(authorized_client, hcsat_url, application_url):
     assert soup.find("a", {"class": "govuk-back-link"})["href"] == application_url
 
     # form exists
-    assert soup.find("input", {"id": "id_recommendation_1"})
+    assert soup.find("input", {"id": "star1"})
     assert soup.find("input", {"id": "submit-id-submit"})["value"] == "Submit feedback"
     assert soup.find("a", {"class": "govuk-button--secondary"})["href"] == reverse("core:home")
 
+    assert mock_get_survey.called_once
 
-def test_post_survey_feedback(authorized_client, hcsat_url, application_pk, survey_id):
+
+def test_post_survey_feedback(authorized_client, hcsat_url, survey_id, mock_update_survey, mock_get_survey):
     response = authorized_client.post(hcsat_url, data={"recommendation": "NEUTRAL"})
     assert response.status_code == 302
     assert response.url == reverse("core:home")
 
+    assert mock_get_survey.called_once
+    assert mock_get_survey.last_request.json() == {}
 
-def test_post_survey_feedback_invalid(authorized_client, hcsat_url):
+    assert mock_update_survey.called_once
+    assert mock_update_survey.last_request.json() == {
+        "id": survey_id,
+        "recommendation": "NEUTRAL",
+        "experienced_issue": [],
+        "helpful_guidance": "",
+        "other_detail": "",
+        "service_improvements_feedback": "",
+        "user_account_process": "",
+    }
+
+
+def test_post_survey_feedback_invalid(authorized_client, hcsat_url, mock_get_survey, mock_update_survey):
     response = authorized_client.post(hcsat_url, data={})
+
     assert response.status_code == 200
     soup = BeautifulSoup(response.content, "html.parser")
     assert soup.find("span", {"class": "govuk-error-message"}).text.strip() == "Error: Star rating is required"
+
+    assert mock_get_survey.called_once
+    assert mock_get_survey.last_request.json() == {}
+
+    assert not mock_update_survey.called

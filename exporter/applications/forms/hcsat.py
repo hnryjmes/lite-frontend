@@ -77,6 +77,7 @@ class HCSATApplicationForm(HCSATminiform):
         ("NEUTRAL", "Neither easy nor difficult"),
         ("EASY", "Easy"),
         ("VERY_EASY", "Very easy"),
+        ("EXISTING_ACCOUNT", "I already had an account"),
     ]
     user_account_process = forms.ChoiceField(
         choices=USER_ACCOUNT_PROCESS,
